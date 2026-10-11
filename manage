@@ -23,6 +23,9 @@ source "$(dirname "${BASH_SOURCE[0]}")/utils/lib_sxng_weblate.sh"
 # shellcheck source=utils/lib_sxng_static.sh
 source "$(dirname "${BASH_SOURCE[0]}")/utils/lib_sxng_static.sh"
 
+# shellcheck source=utils/lib_sxng_skill.sh
+source "$(dirname "${BASH_SOURCE[0]}")/utils/lib_sxng_skill.sh"
+
 # shellcheck source=utils/lib_sxng_node.sh
 source "$(dirname "${BASH_SOURCE[0]}")/utils/lib_sxng_node.sh"
 

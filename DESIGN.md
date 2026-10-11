@@ -21,8 +21,52 @@ The sibling files: `README.md` has the short "This fork" summary,
 | `tests/unit/`, `tests/robot/` | nose2 unit tests; Robot-Framework-style webapp tests |
 | `utils/` | `lib*.sh` (sourced by `./manage`), `templates/etc/searxng/` |
 | `container/`, `postman/` | fork-local, see Local deployment |
+| `skills/searxng/` | fork-local: the `searxng` agent skill, see The searxng skill |
 | `docs/` | Sphinx; `docs/dev/` is the developer documentation |
 | `manage` + `Makefile` | build system, see below |
+
+---
+
+## The searxng skill
+
+`skills/searxng/` is the **source of truth** for the agent skill that documents this
+instance — its port, its categories, and the three engines that exist only in
+`searx/engines/`. It is mirrored into the user skill hub at
+`~/.agents/skills/searxng`, which is where Claude Code, OpenCode and Hermes load it
+from.
+
+That inverts the hub's own rule — *"~/.agents is the sole source of truth for
+user-scoped shared capability"* — and it was adopted deliberately. The skill
+describes a deployment this repo owns; a skill that documents a deployment belongs
+next to the deployment, versioned with it, and reviewed in the same diff.
+
+The cost is two copies and a sync step, so the sync is a target rather than a habit:
+
+| Target | What it does |
+|---|---|
+| `make skill.sync` | `rsync -a --delete --delete-excluded` from `skills/searxng/` to `$SKILL_HUB/searxng/`, excluding `__pycache__` |
+| `make skill.check` | `diff -r` the two trees; non-zero on drift, **skips cleanly** when no hub is present |
+
+`$SKILL_HUB` defaults to `~/.agents/skills` and is overridable, which is how the
+targets get tested against a scratch directory.
+
+**Run `make skill.sync` after editing the skill.** Nothing else will tell you it is
+needed. The skill is *listed* — gated in all three harnesses — so the model never
+loads it unprompted, and a hub copy that has drifted keeps serving old text until
+someone types `/searxng` and notices. That is the whole failure mode `skill.check`
+exists to catch.
+
+Two details that are load-bearing rather than tidy:
+
+- **`--delete-excluded`, not just `--exclude`.** An excluded path is skipped by the
+  transfer *and* left alone by `--delete`, so `__pycache__` would accumulate in the
+  hub permanently. It is written there because the hub copy is read by path.
+- **`skill.check` must not fail when the hub is absent.** CI and any other checkout
+  have no `~/.agents`, and a build that fails for that reason teaches people to
+  ignore the check.
+
+The skill is deliberately *not* wired into `make test`: that would couple this
+repository's build to the state of one user's home directory. Run it explicitly.
 
 ---
 

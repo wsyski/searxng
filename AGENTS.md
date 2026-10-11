@@ -34,5 +34,11 @@ is **not** upstream and is easy to break by merging carelessly.
   purpose. Do not widen its exposure.
 - `AI_POLICY.rst` is enforced by CI: disclose AI assistance, and issue/PR
   descriptions are human-written, not pasted from a model.
+- **The `searxng` skill is authored here**, in `skills/searxng/`, and mirrored into
+  the user hub at `~/.agents/skills/searxng` so three harnesses can load it.
+  After editing it, run `make skill.sync` — without that the hub keeps serving
+  the old text and nothing says so, because the skill is *listed*: the model
+  never loads it unprompted, so the divergence surfaces only when someone types
+  `/searxng`. `make skill.check` reports drift and exits non-zero. See `DESIGN.md`.
 - Commits: present tense, imperative, ≤72-char subject. Open an issue before
   large architectural changes.

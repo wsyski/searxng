@@ -1,0 +1,179 @@
+#!/usr/bin/env python3
+"""Query the host's SearXNG instance and print a compact result list.
+
+Adapted from timeplus-io/AgentSkills `searxng-web-search/scripts/searxng_search.py`
+(MIT). Three deliberate differences, each forced by how this host actually runs:
+
+  * The env var is SEARXNG_URL, not that project's SEARXNG_BASE_URL. Nothing on
+    this host sets the latter, so an unmodified copy silently falls through to its
+    own `localhost:8080` default and dies with curl exit 7 / URLError.
+  * The default endpoint is the LAN address the container is published on. This
+    instance binds 192.168.1.100, NOT loopback - `localhost:8888` is unreachable
+    from the host even though 8888 is the published port.
+  * Empty results are reported together with `.unresponsive_engines`. A bare
+    "no results" reads as "nothing exists"; here it usually means the engines
+    were blocked or rate-limited, which is a different conclusion and a
+    different next action.
+
+Stdlib only. No third-party imports.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+
+DEFAULT_URL = "http://192.168.1.100:8888"
+
+
+def endpoint(explicit: str | None) -> tuple[str, str]:
+    """Return (url, origin) where origin names where the url came from.
+
+    The origin matters: telling someone "falling back to X" when they passed
+    the URL explicitly sends them to fix the wrong thing.
+    """
+    if explicit:
+        return explicit.rstrip("/"), "--url"
+    env = os.environ.get("SEARXNG_URL")
+    if env:
+        return env.rstrip("/"), "SEARXNG_URL"
+    return DEFAULT_URL, "the built-in default"
+
+
+def build_url(sx: str, args: argparse.Namespace) -> str:
+    params = {"q": args.query, "format": "json"}
+    if args.categories:
+        params["categories"] = args.categories
+    if args.engines:
+        params["engines"] = args.engines
+    if args.language:
+        params["language"] = args.language
+    if args.time_range:
+        params["time_range"] = args.time_range
+    if args.safesearch is not None:
+        params["safesearch"] = args.safesearch
+    if args.page > 1:
+        params["pageno"] = args.page
+    return f"{sx}/search?" + urllib.parse.urlencode(params)
+
+
+def fetch(url: str, timeout: int, origin: str) -> dict:
+    req = urllib.request.Request(url, headers={"User-Agent": "sxq/1.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read().decode("utf-8", "replace"))
+    except urllib.error.HTTPError as exc:
+        die(f"HTTP {exc.code} from SearXNG - check the URL and that the instance is up")
+    except urllib.error.URLError as exc:
+        hint = ""
+        if "localhost" in url or "127.0.0.1" in url:
+            hint = (
+                "\n  note: this instance is published on the LAN address, not "
+                "loopback - localhost will not reach it"
+            )
+        die(f"cannot reach {url}\n  reason: {exc.reason}\n  url came from {origin}{hint}")
+    except json.JSONDecodeError:
+        die("response was not JSON - is `format=json` enabled in settings.yml?")
+    return {}
+
+
+def die(msg: str) -> None:
+    print(f"sxq: {msg}", file=sys.stderr)
+    raise SystemExit(1)
+
+
+def clip(text: str, width: int) -> str:
+    text = " ".join((text or "").split())
+    return text if len(text) <= width else text[: width - 1].rstrip() + "…"
+
+
+def report_unresponsive(payload: dict) -> None:
+    """The part that changes the caller's conclusion - never silently drop it."""
+    bad = payload.get("unresponsive_engines") or []
+    if bad:
+        print(f"\n!! {len(bad)} engine(s) did not answer:", file=sys.stderr)
+        for name, reason in bad:
+            print(f"     {name}: {reason}", file=sys.stderr)
+        print(
+            "   Empty results with this notice mean blocked or rate-limited, "
+            "not 'nothing exists'.",
+            file=sys.stderr,
+        )
+
+
+def main() -> None:
+    p = argparse.ArgumentParser(
+        prog="sxq",
+        description="Search the host's SearXNG instance.",
+        epilog="Snippets are not sources: quote or analyse a page with firecrawl scrape or defuddle.",
+    )
+    p.add_argument("query", nargs="?", help="search terms")
+    p.add_argument("--url", help="override the instance (default: $SEARXNG_URL)")
+    p.add_argument("--categories", "-c", help="e.g. general,news,science,it,packages,repos")
+    p.add_argument("--engines", "-e", help="pin engines, e.g. sii,dna rynkow,ksiazak")
+    p.add_argument("--language", help="result language, e.g. en,pl")
+    p.add_argument("--time-range", help="day|week|month|year")
+    p.add_argument("--safesearch", type=int, choices=(0, 1, 2))
+    p.add_argument("--max-results", "-n", type=int, default=10)
+    p.add_argument("--page", type=int, default=1)
+    p.add_argument("--snippet-width", type=int, default=200)
+    p.add_argument("--timeout", type=int, default=20)
+    p.add_argument("--json", action="store_true", help="emit raw JSON instead of a list")
+    p.add_argument("--health", action="store_true", help="check reachability and exit")
+    args = p.parse_args()
+
+    sx, origin = endpoint(args.url)
+
+    if args.health:
+        try:
+            with urllib.request.urlopen(f"{sx}/config", timeout=args.timeout) as r:
+                cfg = json.loads(r.read().decode("utf-8", "replace"))
+            print(f"ok   {sx}")
+            print(f"     version  {cfg.get('version')}")
+            print(f"     engines  {len(cfg.get('engines', []))}")
+            print(f"     categories {len(cfg.get('categories', []))}")
+        except Exception as exc:  # noqa: BLE001 - health must never traceback
+            die(f"unhealthy {sx}: {exc}")
+        return
+
+    if not args.query:
+        p.error("a query is required (or use --health)")
+
+    payload = fetch(build_url(sx, args), args.timeout, origin)
+
+    if args.json:
+        json.dump(payload, sys.stdout, ensure_ascii=False, indent=2)
+        print()
+        return
+
+    results = payload.get("results") or []
+    for item in results[: args.max_results]:
+        print(clip(item.get("title", ""), 120))
+        print(f"  {item.get('url', '')}")
+        engines = item.get("engines") or []
+        if engines:
+            print(f"  via: {', '.join(engines[:4])}")
+        if item.get("content"):
+            print(f"  {clip(item['content'], args.snippet_width)}")
+        print()
+
+    if not results:
+        print("no results")
+        report_unresponsive(payload)
+    else:
+        total = payload.get("number_of_results")
+        if isinstance(total, int) and total > args.max_results:
+            print(f"showing {min(len(results), args.max_results)} of ~{total}")
+        report_unresponsive(payload)
+
+    for suggestion in (payload.get("suggestions") or [])[:3]:
+        print(f"  did you mean: {suggestion}?")
+
+
+if __name__ == "__main__":
+    main()
