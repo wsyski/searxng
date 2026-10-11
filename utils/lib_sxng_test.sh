@@ -13,8 +13,19 @@ test.:
   coverage  : run unit tests with coverage
   robot     : run robot test
   rst       : test .rst files incl. README.rst
+  skill     : verify the hub copy of the searxng skill matches skills/
   clean     : clean intermediate test stuff
 EOF
+}
+
+# Deliberately NOT part of `make test`. It is the one step whose verdict depends
+# on state outside this repository - the user's skill hub - so folding it in
+# would let a build go red for a reason unrelated to the code, and would start
+# failing on any commit if someone ever edits the hub copy directly. Run it on
+# its own, or from a pre-commit / pre-push hook; a check you can invoke
+# separately is one you keep invoking.
+test.skill() {
+    skill.check
 }
 
 if [ "$VERBOSE" = "1" ]; then

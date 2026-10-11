@@ -65,8 +65,14 @@ Two details that are load-bearing rather than tidy:
   have no `~/.agents`, and a build that fails for that reason teaches people to
   ignore the check.
 
-The skill is deliberately *not* wired into `make test`: that would couple this
-repository's build to the state of one user's home directory. Run it explicitly.
+| `make test.skill` | the same check, named in the `test.` namespace |
+
+The skill is deliberately **not** part of `make test`. It is the one step whose
+verdict depends on state outside this repository, so folding it in would let a
+build go red for a reason unrelated to the code — and would start failing on any
+commit if someone ever edits the hub copy directly, which is how a check teaches
+people to ignore it. `test.skill` exists so it can be invoked from CI or a
+pre-commit hook on its own.
 
 ---
 

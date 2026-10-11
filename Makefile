@@ -77,6 +77,7 @@ MANAGE += test.yamllint test.pylint test.black test.pybabel test.unit test.cover
 MANAGE += themes.all themes.simple themes.simple.analyze themes.fix themes.lint themes.test
 MANAGE += static.build.commit static.build.drop static.build.restore
 MANAGE += skill.sync skill.check
+MANAGE += test.skill
 MANAGE += nvm.install nvm.clean nvm.status nvm.nodejs
 MANAGE += go.env.dev go.clean
 
