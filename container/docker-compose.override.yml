@@ -11,6 +11,12 @@ services:
     env_file:
       - ./.env
       - ./.env.prod
+    volumes:
+      # Fork-local engine, single file rather than the whole engines directory so
+      # the image's other 253 engines stay untouched. The image is pinned, so
+      # anything in searx/engines/ is invisible to the container without this.
+      # Drop this mount once the engine is upstream or the pin moves past it.
+      - ../searx/engines/liferay_forum.py:/usr/local/searxng/searx/engines/liferay_forum.py:ro
 
   # Unused: settings.yml has limiter off and no valkey.url. Start it with
   # `docker compose --profile valkey up -d` if that changes.

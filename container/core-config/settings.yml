@@ -73,6 +73,15 @@ engines:
     disabled: false
   - name: hackernews
     disabled: false
+  # Liferay community forum (discuss.liferay.com). Not an upstream engine: added
+  # here because use_default_settings appends unknown engine names. Verified
+  # 2026-10-11 against search.json; Discourse 429s non-browser clients, which
+  # SearXNG avoids via curl_cffi impersonation.
+  - name: liferay forum
+    engine: liferay_forum
+    shortcut: lf
+    categories: it
+    disabled: false
   # News: duckduckgo news, wikinews (default on) and qwant news answer. google news
   # ("access denied"), reuters (HTTP error), bing news (connection error, as bing) and
   # brave.news (crash) do not.

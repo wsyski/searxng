@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "75a3e47c-8bc2-410b-8fc0-4022aa00c191",
     "name": "searxng-integration-test",
-    "description": "Direct requests to the local SearXNG instance (container/docker-compose.yml), the same way a metasearch client (Firecrawl, Hermes, a browser bookmark) calls it. SearXNG has no authentication: whatever address SEARXNG_HOST publishes (container/.env) is an open search proxy for that network.\n\ncontainer/core-config/settings.yml must keep search.formats [html, json] - without json, clients get 200 responses with no results array.\n\nFirecrawl's own view of this instance (/v2/search mappers) is tested in the firecrawl project's collection, folder \"SearXNG (local search provider)\".\n\n{{searxngUrl}} is a collection variable so these run without an environment; point it at the published host.\n\nThe collection carries one pre-request guard: a request whose host variable does not resolve to a real URL is skipped with a console warning naming the variable, which is what a shared-link copy (no collection variable, no environment selected) produces.",
+    "description": "Direct requests to the local SearXNG instance (container/docker-compose.yml), the same way a metasearch client (Firecrawl, Hermes, a browser bookmark) calls it. SearXNG has no authentication: whatever address SEARXNG_HOST publishes (container/.env) is an open search proxy for that network.\n\ncontainer/core-config/settings.yml must keep search.formats [html, json] - without json, clients get 200 responses with no results array.\n\nThe last request covers liferay_forum, a fork-local engine. The other two external sources probed for this fork - learn-answer and bankier.pl - render client-side and return nothing useful over plain HTTP, so they are Firecrawl scrapes and live in the firecrawl project's collection, folder \"External sources (Firecrawl scrape)\". Firecrawl's own view of this instance (/v2/search mappers) is there too.\n\n{{searxngUrl}} is a collection variable so these run without an environment; point it at the published host. Nothing here needs the firecrawl stack to be up.\n\nThe collection carries one pre-request guard: a request whose host variable does not resolve to a real URL is skipped with a console warning naming the variable, which is what a shared-link copy (no collection variable, no environment selected) produces.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -316,6 +316,71 @@
         },
         "description": "safesearch=2 is strict, and it is the only thing /v2/search safe:true adds to the SearXNG request (search/v2/searxng.ts sends it only when safe is set, otherwise the instance default applies). How much each engine honours it varies, so this asserts the parameter is accepted and the query still answers rather than pinning a result count. The Jev filter that runs on top of safe:true is a separate stage, covered by the Search Safe Filter folder."
       }
+    },
+    {
+      "name": "Fork engine: liferay forum",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "const rs = body.results || [];",
+              "console.log(rs.length + ' result(s), unresponsive: ' + JSON.stringify(body.unresponsive_engines));",
+              "pm.test('The engine answered', () => {",
+              "  // Discourse suspends anonymous clients for 180s after a burst, reported here",
+              "  // rather than as an empty result. Re-run it; do not debug the engine.",
+              "  pm.expect(rs, 'empty result with no unresponsive_engines').to.have.length.above(0);",
+              "});",
+              "pm.test('Every result is a real forum topic URL', () => {",
+              "  const bad = rs.filter(r => !r || typeof r.url !== 'string'",
+              "    || !r.url.startsWith('https://discuss.liferay.com/t/')).map(r => (r || {}).url);",
+              "  pm.expect(bad, 'Discourse carries slug+id but no URL, so the engine builds it: '",
+              "    + JSON.stringify(bad.slice(0, 3))).to.have.lengthOf(0);",
+              "});",
+              "pm.test('Results carry title and content', () => {",
+              "  const bad = rs.filter(r => !r || !r.title || typeof r.content !== 'string').map(r => (r || {}).url);",
+              "  pm.expect(bad, 'missing title/content: ' + JSON.stringify(bad.slice(0, 3))).to.have.lengthOf(0);",
+              "});",
+              "pm.test('Dates are parsed datetimes, not raw ISO strings', () => {",
+              "  const dated = rs.filter(r => r && r.publishedDate);",
+              "  console.log(rs.length + ' result(s), ' + dated.length + ' with publishedDate');",
+              "  pm.expect(dated, 'no result had a publishedDate').to.have.length.above(0);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{searxngUrl}}/search?q=upgrade&engines=liferay forum&format=json",
+          "host": [
+            "{{searxngUrl}}"
+          ],
+          "path": [
+            "search"
+          ],
+          "query": [
+            {
+              "key": "q",
+              "value": "upgrade"
+            },
+            {
+              "key": "engines",
+              "value": "liferay forum"
+            },
+            {
+              "key": "format",
+              "value": "json"
+            }
+          ]
+        }
+      },
+      "description": "searx/engines/liferay_forum.py, a fork-local engine over the Discourse search.json endpoint at discuss.liferay.com. It needs no browser, which is why it is an engine and not a Firecrawl scrape, unlike the other two sources in this repo. The endpoint ANDs the search terms, so a phrase with no hits returns no results key at all rather than an error. Discourse rate-limits anonymous clients hard: a burst gets a 180 s suspension, reported in unresponsive_engines."
     }
   ],
   "variable": [
