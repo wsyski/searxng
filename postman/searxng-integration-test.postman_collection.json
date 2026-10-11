@@ -59,7 +59,21 @@
               "});",
               "pm.test('The categories Firecrawl asks for are published', () => {",
               "  pm.expect(cfg.categories).to.include.members(['general', 'news', 'images']);",
-              "});"
+              "});",
+              "",
+              "    // An engine file in searx/engines/ that is not bind-mounted by",
+              "    // container/docker-compose.override.yml is SILENTLY absent from this list:",
+              "    // no error, no warning, and a search naming it returns zero results, which",
+              "    // reads as 'nothing found' rather than 'misconfigured'. That failure mode",
+              "    // cost real time while adding these three engines, so it is pinned here.",
+              "    pm.test('The three fork-local analyst engines are registered and enabled', () => {",
+              "      const byName = {};",
+              "      (cfg.engines || []).forEach(e => { if (e && e.name) byName[e.name] = e; });",
+              "      const missing = ['sii', 'dna rynkow', 'ksiazak'].filter(n => !byName[n]);",
+              "      pm.expect(missing, 'absent from /config - is the bind mount in container/docker-compose.override.yml present?').to.have.lengthOf(0);",
+              "      const off = ['sii', 'dna rynkow', 'ksiazak'].filter(n => !byName[n].enabled);",
+              "      pm.expect(off, 'registered but disabled in container/core-config/settings.yml').to.have.lengthOf(0);",
+              "    });"
             ]
           }
         }
@@ -83,7 +97,8 @@
           ]
         },
         "description": "GET /config?format=json - what this instance will actually answer with: which engines are enabled, and which categories exist. An empty engine list here explains an empty result set everywhere else in this folder."
-      }
+      },
+      "description": "The instance's own /config. Two things are asserted here that a green search cannot tell you: that something is enabled at all (settings.yml sets search.formats to [html, json] and Firecrawl depends on the json half - dropping it answers HTTP 200 with no .results array, which reads as 'engine found nothing'), and that the fork-local engines are actually mounted. Both failure modes are silent."
     },
     {
       "name": "Direct JSON search",
@@ -1118,6 +1133,79 @@
             }
           ],
           "description": "WordPress `search` matches the title AND the body, so 'orlen' returns the Atrem note because ORLEN is discussed inside it. Recorded because the instinct is to treat that as a false positive; it is the source working correctly, and a coverage check must not silently discard it. Orlen is the second-largest GPW weight in the DeGiro book and has no post of its own."
+        },
+        {
+          "name": "Ksiazak: thematic query, no company (inflacja)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{searxngUrl}}/search?q=inflacja&engines=ksiazak&format=json",
+              "host": [
+                "{{searxngUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "inflacja"
+                },
+                {
+                  "key": "engines",
+                  "value": "ksiazak"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const rs = body.results || [];",
+                  "console.log(rs.length + ' result(s) for a non-company query, unresponsive: ' + JSON.stringify(body.unresponsive_engines));",
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('The engine is healthy', () => {",
+                  "  // The assertion is that the ENGINE answered, not that it found something:",
+                  "  // a test that fails on an expected empty result is how a sparse source gets",
+                  "  // deleted for being sparse.",
+                  "  pm.expect(body.unresponsive_engines || [], 'engine failed').to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('A thematic word finds the office even with no ticker or name to match', () => {",
+                  "  // 'inflacja' is not a company, a ticker or an ISIN. It matches because the",
+                  "  // office writes about macro conditions inside its company notes - here the",
+                  "  // Dino Polska thesis. So a coverage sweep keyed only on ticker would never",
+                  "  // surface this post, and would report the office as silent on inflation",
+                  "  // when it is not.",
+                  "  pm.expect(rs, 'no result at all').to.have.length.above(0);",
+                  "  const titled = rs.filter(r => /inflacj/i.test(r.title || ''));",
+                  "  console.log('   titled matches: ' + titled.length + ' of ' + rs.length);",
+                  "});",
+                  "pm.test('Every result is a konradksiazak.pl post', () => {",
+                  "  const bad = rs.filter(r => !r || !/^https:\\/\\/konradksiazak\\.pl\\/[^/]+\\/$/.test(r.url || '')).map(r => (r||{}).url);",
+                  "  pm.expect(bad, 'not a post URL: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('Titles are readable Polish, not raw entities', () => {",
+                  "  const bad = rs.filter(r => !r || /&#\\d+;/.test(r.title || '')).map(r => (r||{}).url);",
+                  "  pm.expect(bad, 'undecoded entities: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('The summary is the excerpt, not the 15 kB body', () => {",
+                  "  const bad = rs.filter(r => !r || (r.content || '').length > 2000).map(r => (r||{}).url);",
+                  "  pm.expect(bad, 'body used as summary: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "description": "searx/engines/ksiazak.py against a query that is not a company at all. 'inflacja' matches the Dino Polska note because inflation drives that thesis - the office's own subject matter, not a coincidence. Verified non-empty on the live instance 2026-10-11 (1 result, engine healthy), which is why it is here. The two sibling requests cover the other two shapes: a company name (noctiluca) and a body-only mention (orlen)."
         }
       ]
     }
