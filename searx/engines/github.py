@@ -3,6 +3,7 @@
 
 from urllib.parse import urlencode
 from dateutil import parser
+import os
 
 # about
 about = {
@@ -26,6 +27,21 @@ def request(query, params):
 
     params['url'] = search_url.format(query=urlencode({'q': query}))
     params['headers']['Accept'] = accept_header
+
+    # Authenticated search lifts GitHub's ceiling from 10 to 30 requests a minute.
+    # Unauthenticated, roughly twenty queries in three minutes is enough to make
+    # SearXNG suspend this engine for 180 s, reporting it as "access denied" -
+    # which reads as a block rather than a throttle. See the fork's searxng
+    # skill, references/categories.md, "A suspension is not a block".
+    #
+    # Read from the environment, never from settings.yml: this instance has no
+    # authentication and no limiter, and settings.yml is tracked in git. The
+    # token belongs in the gitignored container/.env.prod, which compose passes
+    # in through env_file. Searching public repositories needs no scopes at all,
+    # so a token with none is sufficient.
+    token = os.environ.get('GITHUB_PERSONAL_ACCESS_TOKEN', '').strip()
+    if token:
+        params['headers']['Authorization'] = f'Bearer {token}'
 
     return params
 

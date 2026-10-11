@@ -22,6 +22,11 @@ services:
       - ../searx/engines/sii.py:/usr/local/searxng/searx/engines/sii.py:ro
       - ../searx/engines/dnarynkow.py:/usr/local/searxng/searx/engines/dnarynkow.py:ro
       - ../searx/engines/ksiazak.py:/usr/local/searxng/searx/engines/ksiazak.py:ro
+      # Upstream engine, patched fork-side to read a GitHub token from the
+      # environment (see the comment in searx/engines/github.py). Without this
+      # mount the container keeps the pristine image copy and the patch is a
+      # silent no-op: the repo would look patched while nothing changed.
+      - ../searx/engines/github.py:/usr/local/searxng/searx/engines/github.py:ro
 
   # Unused: settings.yml has limiter off and no valkey.url. Start it with
   # `docker compose --profile valkey up -d` if that changes.

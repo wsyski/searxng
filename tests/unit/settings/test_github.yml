@@ -1,0 +1,16 @@
+# This SearXNG setup is used in unit tests
+
+use_default_settings:
+
+  engines:
+    # remove all engines
+    keep_only: []
+
+engines:
+
+  - name: github
+    engine: github
+    categories: ["it", "repos"]
+    shortcut: "gh"
+    timeout: 10.0
+    disabled: true
