@@ -4,7 +4,7 @@
 #   .env       committed: image pin, publish address/port, base URL
 #   .env.prod  gitignored: SEARXNG_SECRET (overrides server.secret_key)
 #
-# Firecrawl reaches this instance at SEARXNG_ENDPOINT=http://192.168.1.100:8080.
+# Firecrawl reaches this instance at SEARXNG_ENDPOINT=http://192.168.1.100:8888.
 
 services:
   core:

@@ -260,7 +260,7 @@ changes to the base file do not conflict.
   `docker compose --profile valkey up -d`.
 - `postman/run.sh` is the integration smoke test (newman) against that running
   instance: `./postman/run.sh`, `./postman/run.sh --folder "Direct JSON search"`,
-  `SEARXNG_URL=http://127.0.0.1:8080 ./postman/run.sh`. The collection checks
+  `SEARXNG_URL=http://127.0.0.1:8888 ./postman/run.sh`. The collection checks
   `/config`, direct JSON search, news, images, and strict safesearch. Run it
   after changing `container/core-config/settings.yml` or the pinned image.
 

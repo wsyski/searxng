@@ -1213,7 +1213,7 @@
   "variable": [
     {
       "key": "searxngUrl",
-      "value": "http://192.168.1.100:8080"
+      "value": "http://192.168.1.100:8888"
     }
   ]
 }

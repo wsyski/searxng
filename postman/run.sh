@@ -4,7 +4,7 @@
 #
 #   ./postman/run.sh                                        # everything
 #   ./postman/run.sh --folder "News category search"
-#   SEARXNG_URL=http://127.0.0.1:8080 ./postman/run.sh      # another address
+#   SEARXNG_URL=http://127.0.0.1:8888 ./postman/run.sh      # another address
 #
 # Bare SearXNG only: nothing here needs the firecrawl stack. The Firecrawl-backed
 # scrapes (learn-answer, bankier.pl) live in the firecrawl project's collection,
