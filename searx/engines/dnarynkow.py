@@ -68,7 +68,7 @@ about = {
     "results": "HTML",
 }
 
-categories = ["news"]
+categories = ["general"]
 paging = True
 
 base_url = "https://dnarynkow.pl"

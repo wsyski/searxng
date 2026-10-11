@@ -191,4 +191,4 @@ class SiiEngineTests(SearxTestCase):
         self.assertFalse(self.engine.paging)
 
     def test_the_engine_is_news_only(self):
-        self.assertEqual(self.engine.categories, ["news"])
+        self.assertEqual(self.engine.categories, ["news", "general"])

@@ -86,7 +86,7 @@ about = {
     "results": "HTML",
 }
 
-categories = ["news"]
+categories = ["news", "general"]
 paging = False
 
 base_url = "https://www.sii.org.pl"

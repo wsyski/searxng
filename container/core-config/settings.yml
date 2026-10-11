@@ -29,6 +29,7 @@ server:
   limiter: false
   image_proxy: false
 
+
 search:
   formats:
     - html
@@ -100,7 +101,6 @@ engines:
   - name: sii
     engine: sii
     shortcut: sii
-    categories: news
     disabled: false
   # DNA Rynkow (dnarynkow.pl) - per-company cards for ~100 listed names.
   # Not an upstream engine. Verified 2026-10-11.
@@ -117,7 +117,6 @@ engines:
   - name: dna rynkow
     engine: dnarynkow
     shortcut: dna
-    categories: news
     disabled: false
   # Ksiazak (konradksiazak.pl) - a small office publishing long-form single-company
   # notes. Not an upstream engine. Verified 2026-10-11.
@@ -129,7 +128,6 @@ engines:
   - name: ksiazak
     engine: ksiazak
     shortcut: ksz
-    categories: news
     disabled: false
   # News: duckduckgo news, wikinews (default on) and qwant news answer. google news
   # ("access denied"), reuters (HTTP error), bing news (connection error, as bing) and

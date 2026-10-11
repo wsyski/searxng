@@ -10,7 +10,7 @@ engines:
 
   - name: ksiazak
     engine: ksiazak
-    categories: ["news"]
+    categories: ["general"]
     shortcut: "ksz"
     timeout: 9.0
     disabled: true

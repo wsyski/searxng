@@ -10,7 +10,7 @@ engines:
 
   - name: dna rynkow
     engine: dnarynkow
-    categories: ["news"]
+    categories: ["general"]
     shortcut: "dna"
     timeout: 9.0
     disabled: true

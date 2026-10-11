@@ -168,4 +168,4 @@ class DnaRynkowEngineTests(SearxTestCase):
         self.assertIsNone(results[1].publishedDate)
 
     def test_the_category_is_news(self):
-        self.assertEqual(self.engine.categories, ["news"])
+        self.assertEqual(self.engine.categories, ["general"])

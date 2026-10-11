@@ -46,7 +46,7 @@ about = {
     "results": "JSON",
 }
 
-categories = ["news"]
+categories = ["general"]
 paging = True
 
 base_url = "https://konradksiazak.pl"

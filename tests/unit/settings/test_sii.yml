@@ -10,7 +10,7 @@ engines:
 
   - name: sii
     engine: sii
-    categories: ["news"]
+    categories: ["news", "general"]
     shortcut: "sii"
     timeout: 9.0
     disabled: true
