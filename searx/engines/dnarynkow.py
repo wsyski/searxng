@@ -158,7 +158,18 @@ def _title(card):
 
 
 def _ticker(card):
-    m = _TICKER_RE.search(_H3_RE.search(card).group(1)) if _H3_RE.search(card) else None
+    # Search once and reuse the match. This used to be
+    # `_TICKER_RE.search(_H3_RE.search(card).group(1)) if _H3_RE.search(card)`
+    # - the same regex run twice, with the guard deciding on one call and the
+    # body dereferencing the other. Deterministic, so it cannot actually fail,
+    # but it reads as though it can, and basedpyright reports exactly that as
+    # reportOptionalMemberAccess: "group is not a known attribute of None".
+    # That was the only *error* among this fork's engines, as distinct from the
+    # reportUnknown* warnings the untyped engine API produces.
+    heading = _H3_RE.search(card)
+    if not heading:
+        return None
+    m = _TICKER_RE.search(heading.group(1))
     return m.group(1) if m else None
 
 
