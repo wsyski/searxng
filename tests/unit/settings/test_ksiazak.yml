@@ -1,0 +1,16 @@
+# This SearXNG setup is used in unit tests
+
+use_default_settings:
+
+  engines:
+    # remove all engines
+    keep_only: []
+
+engines:
+
+  - name: ksiazak
+    engine: ksiazak
+    categories: ["news"]
+    shortcut: "ksz"
+    timeout: 9.0
+    disabled: true

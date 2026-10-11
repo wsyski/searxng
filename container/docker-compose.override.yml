@@ -21,6 +21,7 @@ services:
       - ../searx/engines/liferay_forum.py:/usr/local/searxng/searx/engines/liferay_forum.py:ro
       - ../searx/engines/sii.py:/usr/local/searxng/searx/engines/sii.py:ro
       - ../searx/engines/dnarynkow.py:/usr/local/searxng/searx/engines/dnarynkow.py:ro
+      - ../searx/engines/ksiazak.py:/usr/local/searxng/searx/engines/ksiazak.py:ro
 
   # Unused: settings.yml has limiter off and no valkey.url. Start it with
   # `docker compose --profile valkey up -d` if that changes.

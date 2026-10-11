@@ -998,6 +998,128 @@
           ]
         }
       ]
+    },
+    {
+      "name": "Fork engine: ksiazak (konradksiazak.pl)",
+      "item": [
+        {
+          "name": "Ksiazak: a held GPW name (noctiluca)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{searxngUrl}}/search?q=noctiluca&engines=ksiazak&format=json",
+              "host": [
+                "{{searxngUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "noctiluca"
+                },
+                {
+                  "key": "engines",
+                  "value": "ksiazak"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const rs = body.results || [];",
+                  "console.log(rs.length + ' result(s), unresponsive: ' + JSON.stringify(body.unresponsive_engines));",
+                  "pm.test('The office has published on this name', () => {",
+                  "  // This source is SUPPOSED to be sparse. Six posts, six companies. An empty",
+                  "  // result is the normal answer, not a fault - so the assertion is that the",
+                  "  // engine is healthy and answered, not that it found anything.",
+                  "  pm.expect(body.unresponsive_engines || [], 'engine failed').to.have.lengthOf(0);",
+                  "  pm.expect(Array.isArray(rs)).to.be.true;",
+                  "});",
+                  "pm.test('Every result is a konradksiazak.pl post', () => {",
+                  "  const bad = rs.filter(r => !r || !/^https:\\/\\/konradksiazak\\.pl\\/[^/]+\\/$/.test(r.url || '')).map(r => (r||{}).url);",
+                  "  pm.expect(bad, 'not a post URL: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('Titles are readable Polish, not raw entities', () => {",
+                  "  // WordPress returns &#243;&#322; for diacritics; the engine must decode them.",
+                  "  const bad = rs.filter(r => !r || /&#\\d+;/.test(r.title || '')).map(r => (r||{}).url);",
+                  "  pm.expect(bad, 'undecoded entities: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('The summary is the excerpt, not the 15 kB body', () => {",
+                  "  const bad = rs.filter(r => !r || (r.content || '').length > 2000).map(r => (r||{}).url);",
+                  "  pm.expect(bad, 'body used as summary: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "description": "searx/engines/ksiazak.py, a fork-local engine over the PUBLIC WordPress REST API rather than scraped HTML. The archive is six posts about six companies, measured 2026-10-11 - and that is the product, not a shortfall. A rare hit means a dedicated analyst picked that company, which is why this source earns a place despite returning nothing for most queries. Noctiluca SA is a 0.14% holding here; the other five posts cover Atrem, Dino Polska, Scanway, Kolejkowo and Grupa Kęty."
+        },
+        {
+          "name": "Ksiazak: body-only match (orlen)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{searxngUrl}}/search?q=orlen&engines=ksiazak&format=json",
+              "host": [
+                "{{searxngUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "orlen"
+                },
+                {
+                  "key": "engines",
+                  "value": "ksiazak"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const rs = (pm.response.json().results || []);",
+                  "console.log(rs.length + ' result(s) for a body-only match');",
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('A hit inside the body is returned even when it is not in the title', () => {",
+                  "  // WordPress `search` covers title AND body, so 'orlen' returns the Atrem",
+                  "  // note because ORLEN is discussed inside it. That is the source behaving",
+                  "  // correctly. Asserting the company appears in the title would be asserting",
+                  "  // something false, and would make a correct engine look broken.",
+                  "  pm.expect(rs, 'no result at all').to.have.length.above(0);",
+                  "  const named = rs.filter(r => /orlen/i.test(r.title || ''));",
+                  "  console.log('   titled matches: ' + named.length + ' of ' + rs.length);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "description": "WordPress `search` matches the title AND the body, so 'orlen' returns the Atrem note because ORLEN is discussed inside it. Recorded because the instinct is to treat that as a false positive; it is the source working correctly, and a coverage check must not silently discard it. Orlen is the second-largest GPW weight in the DeGiro book and has no post of its own."
+        }
+      ]
     }
   ],
   "variable": [

@@ -119,6 +119,18 @@ engines:
     shortcut: dna
     categories: news
     disabled: false
+  # Ksiazak (konradksiazak.pl) - a small office publishing long-form single-company
+  # notes. Not an upstream engine. Verified 2026-10-11.
+  # Do NOT judge this source by archive size. Six posts about six companies is the
+  # product, not a shortfall: the question is "has this office written about a name
+  # I hold?", where one hit is the signal and empty is the normal answer. An engine
+  # that is rarely non-empty can be the highest-signal source in the set.
+  # Reads the public WordPress REST API rather than scraping HTML.
+  - name: ksiazak
+    engine: ksiazak
+    shortcut: ksz
+    categories: news
+    disabled: false
   # News: duckduckgo news, wikinews (default on) and qwant news answer. google news
   # ("access denied"), reuters (HTTP error), bing news (connection error, as bing) and
   # brave.news (crash) do not.
