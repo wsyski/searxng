@@ -1,0 +1,16 @@
+# This SearXNG setup is used in unit tests
+
+use_default_settings:
+
+  engines:
+    # remove all engines
+    keep_only: []
+
+engines:
+
+  - name: sii
+    engine: sii
+    categories: ["news"]
+    shortcut: "sii"
+    timeout: 9.0
+    disabled: true

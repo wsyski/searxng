@@ -381,6 +381,623 @@
         }
       },
       "description": "searx/engines/liferay_forum.py, a fork-local engine over the Discourse search.json endpoint at discuss.liferay.com. It needs no browser, which is why it is an engine and not a Firecrawl scrape, unlike the other two sources in this repo. The endpoint ANDs the search terms, so a phrase with no hits returns no results key at all rather than an error. Discourse rate-limits anonymous clients hard: a burst gets a 180 s suspension, reported in unresponsive_engines."
+    },
+    {
+      "name": "Fork engine: sii (sii.org.pl)",
+      "item": [
+        {
+          "name": "SII: single GPW company (orlen)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{searxngUrl}}/search?q=orlen&engines=sii&format=json",
+              "host": [
+                "{{searxngUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "orlen"
+                },
+                {
+                  "key": "engines",
+                  "value": "sii"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          },
+          "description": "searx/engines/sii.py, a fork-local engine over the server-rendered search page at\nsii.org.pl/szukaj. The parameter is `search`, NOT `q`: /szukaj?q= returns HTTP 200 and one\nidentical 62,576-byte page for EVERY query including a nonsense one, so the wrong parameter\nreads as a healthy engine that found nothing. The site also serves an empty 5.4 kB shell to a\nbare 'Mozilla/5.0' or 'curl/8.5.0' but a full page to any realistic agent string, so the engine\nidentifies as SearXNG/1.0 rather than leaning on curl_cffi's browser impersonation.\nA query matching nothing answers 404, not an empty 200, which is why the engine sets\nraise_for_httperror = False. Every query here returned 10 results on 2026-10-11.\n\nNote the two outcomes this request accepts. Measured 2026-10-11: sii.org.pl serves two\nsearches from a burst and answers 429 after that, and newman sends requests back to back with\nno pacing, so a throttle is expected on a full-collection run. The assertion requires that a\nthrottle is NAMED (unresponsive_engines carries 'too many requests'); an empty result with no\nreason attached still fails, because that is indistinguishable from a genuinely empty search.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const rs = body.results || [];",
+                  "const bad = body.unresponsive_engines || [];",
+                  "console.log(rs.length + ' result(s), unresponsive: ' + JSON.stringify(bad));",
+                  "pm.test('The engine answered, or said why it did not', () => {",
+                  "  // sii.org.pl rate-limits hard (measured: 2 searches, then 429) and this",
+                  "  // collection fires four back to back with no pacing, so a throttle is a",
+                  "  // legitimate outcome. What is NOT acceptable is an empty result with no",
+                  "  // reason attached - that is indistinguishable from 'nothing matches'.",
+                  "  const throttled = bad.some(u => JSON.stringify(u).indexOf('too many requests') !== -1);",
+                  "  if (throttled) { console.log('   (throttled by sii.org.pl - accepted)'); return; }",
+                  "  pm.expect(rs, 'empty result and not throttled').to.have.length.above(0);",
+                  "});",
+                  "pm.test('Every result is a sii.org.pl ARTICLE url', () => {",
+                  "  // /<id>/<section>/<slug>.html. A wrong query parameter (?q=) still returns HTTP",
+                  "  // 200 and a plausible page, which is why this asserts the host AND the shape:",
+                  "  // an author (/autor/) or advert (click.php) link would not pass.",
+                  "  const wrong = rs.filter(r => !r || !/^https:\\/\\/www\\.sii\\.org\\.pl\\/\\d+\\/[^?#]*\\.html$/.test(r.url || '')).map(r => (r||{}).url);",
+                  "  pm.expect(wrong, 'not a sii article URL: ' + JSON.stringify(wrong.slice(0,3))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('Results carry a title and a summary', () => {",
+                  "  const wrong = rs.filter(r => !r || !r.title || typeof r.content !== 'string').map(r => (r||{}).url);",
+                  "  pm.expect(wrong, 'missing title/content: ' + JSON.stringify(wrong.slice(0,3))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('Summaries are prose, not the date line', () => {",
+                  "  // One markup variant writes the date/author line as class=\"above metas\"; a",
+                  "  // parser matching only class=\"notes\" returns the date as the summary.",
+                  "  const dated = rs.filter(r => /^\\s*\\d{2}\\.\\d{2}\\.\\d{4}\\s*$/.test(r.content || ''));",
+                  "  pm.expect(dated, 'the date leaked into the summary: ' + JSON.stringify(dated.map(r=>r.url))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('Dates are parsed datetimes', () => {",
+                  "  const dated = rs.filter(r => r && r.publishedDate);",
+                  "  pm.expect(dated, 'no result had a publishedDate').to.have.length.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SII: multi-word company name (cd projekt)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{searxngUrl}}/search?q=cd%20projekt&engines=sii&format=json",
+              "host": [
+                "{{searxngUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "cd projekt"
+                },
+                {
+                  "key": "engines",
+                  "value": "sii"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          },
+          "description": "Proves the query reaches the site intact. The engine builds /szukaj?search=<terms>.\nA single-word query could pass by accident if the first term were being used alone;\n'cd projekt' is a real GPW name and only matches as a phrase.\n\nNote the two outcomes this request accepts. Measured 2026-10-11: sii.org.pl serves two\nsearches from a burst and answers 429 after that, and newman sends requests back to back with\nno pacing, so a throttle is expected on a full-collection run. The assertion requires that a\nthrottle is NAMED (unresponsive_engines carries 'too many requests'); an empty result with no\nreason attached still fails, because that is indistinguishable from a genuinely empty search.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const rs = body.results || [];",
+                  "const bad = body.unresponsive_engines || [];",
+                  "console.log(rs.length + ' result(s), unresponsive: ' + JSON.stringify(bad));",
+                  "pm.test('The engine answered, or said why it did not', () => {",
+                  "  // sii.org.pl rate-limits hard (measured: 2 searches, then 429) and this",
+                  "  // collection fires four back to back with no pacing, so a throttle is a",
+                  "  // legitimate outcome. What is NOT acceptable is an empty result with no",
+                  "  // reason attached - that is indistinguishable from 'nothing matches'.",
+                  "  const throttled = bad.some(u => JSON.stringify(u).indexOf('too many requests') !== -1);",
+                  "  if (throttled) { console.log('   (throttled by sii.org.pl - accepted)'); return; }",
+                  "  pm.expect(rs, 'empty result and not throttled').to.have.length.above(0);",
+                  "});",
+                  "pm.test('Every result is a sii.org.pl ARTICLE url', () => {",
+                  "  // /<id>/<section>/<slug>.html. A wrong query parameter (?q=) still returns HTTP",
+                  "  // 200 and a plausible page, which is why this asserts the host AND the shape:",
+                  "  // an author (/autor/) or advert (click.php) link would not pass.",
+                  "  const wrong = rs.filter(r => !r || !/^https:\\/\\/www\\.sii\\.org\\.pl\\/\\d+\\/[^?#]*\\.html$/.test(r.url || '')).map(r => (r||{}).url);",
+                  "  pm.expect(wrong, 'not a sii article URL: ' + JSON.stringify(wrong.slice(0,3))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('Results carry a title and a summary', () => {",
+                  "  const wrong = rs.filter(r => !r || !r.title || typeof r.content !== 'string').map(r => (r||{}).url);",
+                  "  pm.expect(wrong, 'missing title/content: ' + JSON.stringify(wrong.slice(0,3))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('Summaries are prose, not the date line', () => {",
+                  "  // One markup variant writes the date/author line as class=\"above metas\"; a",
+                  "  // parser matching only class=\"notes\" returns the date as the summary.",
+                  "  const dated = rs.filter(r => /^\\s*\\d{2}\\.\\d{2}\\.\\d{4}\\s*$/.test(r.content || ''));",
+                  "  pm.expect(dated, 'the date leaked into the summary: ' + JSON.stringify(dated.map(r=>r.url))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('Dates are parsed datetimes', () => {",
+                  "  const dated = rs.filter(r => r && r.publishedDate);",
+                  "  pm.expect(dated, 'no result had a publishedDate').to.have.length.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SII: another GPW name (kghm)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{searxngUrl}}/search?q=kghm&engines=sii&format=json",
+              "host": [
+                "{{searxngUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "kghm"
+                },
+                {
+                  "key": "engines",
+                  "value": "sii"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          },
+          "description": "A second company, to show the engine is not answering from a cached page.\nkghm returned 10 results on 2026-10-11.\n\nNote the two outcomes this request accepts. Measured 2026-10-11: sii.org.pl serves two\nsearches from a burst and answers 429 after that, and newman sends requests back to back with\nno pacing, so a throttle is expected on a full-collection run. The assertion requires that a\nthrottle is NAMED (unresponsive_engines carries 'too many requests'); an empty result with no\nreason attached still fails, because that is indistinguishable from a genuinely empty search.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const rs = body.results || [];",
+                  "const bad = body.unresponsive_engines || [];",
+                  "console.log(rs.length + ' result(s), unresponsive: ' + JSON.stringify(bad));",
+                  "pm.test('The engine answered, or said why it did not', () => {",
+                  "  // sii.org.pl rate-limits hard (measured: 2 searches, then 429) and this",
+                  "  // collection fires four back to back with no pacing, so a throttle is a",
+                  "  // legitimate outcome. What is NOT acceptable is an empty result with no",
+                  "  // reason attached - that is indistinguishable from 'nothing matches'.",
+                  "  const throttled = bad.some(u => JSON.stringify(u).indexOf('too many requests') !== -1);",
+                  "  if (throttled) { console.log('   (throttled by sii.org.pl - accepted)'); return; }",
+                  "  pm.expect(rs, 'empty result and not throttled').to.have.length.above(0);",
+                  "});",
+                  "pm.test('Every result is a sii.org.pl ARTICLE url', () => {",
+                  "  // /<id>/<section>/<slug>.html. A wrong query parameter (?q=) still returns HTTP",
+                  "  // 200 and a plausible page, which is why this asserts the host AND the shape:",
+                  "  // an author (/autor/) or advert (click.php) link would not pass.",
+                  "  const wrong = rs.filter(r => !r || !/^https:\\/\\/www\\.sii\\.org\\.pl\\/\\d+\\/[^?#]*\\.html$/.test(r.url || '')).map(r => (r||{}).url);",
+                  "  pm.expect(wrong, 'not a sii article URL: ' + JSON.stringify(wrong.slice(0,3))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('Results carry a title and a summary', () => {",
+                  "  const wrong = rs.filter(r => !r || !r.title || typeof r.content !== 'string').map(r => (r||{}).url);",
+                  "  pm.expect(wrong, 'missing title/content: ' + JSON.stringify(wrong.slice(0,3))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('Summaries are prose, not the date line', () => {",
+                  "  // One markup variant writes the date/author line as class=\"above metas\"; a",
+                  "  // parser matching only class=\"notes\" returns the date as the summary.",
+                  "  const dated = rs.filter(r => /^\\s*\\d{2}\\.\\d{2}\\.\\d{4}\\s*$/.test(r.content || ''));",
+                  "  pm.expect(dated, 'the date leaked into the summary: ' + JSON.stringify(dated.map(r=>r.url))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('Dates are parsed datetimes', () => {",
+                  "  const dated = rs.filter(r => r && r.publishedDate);",
+                  "  pm.expect(dated, 'no result had a publishedDate').to.have.length.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SII: fourth GPW name (budimex)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{searxngUrl}}/search?q=budimex&engines=sii&format=json",
+              "host": [
+                "{{searxngUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "budimex"
+                },
+                {
+                  "key": "engines",
+                  "value": "sii"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          },
+          "description": "Third distinct company. budimex returned 10 results on 2026-10-11.\n\nNote the two outcomes this request accepts. Measured 2026-10-11: sii.org.pl serves two\nsearches from a burst and answers 429 after that, and newman sends requests back to back with\nno pacing, so a throttle is expected on a full-collection run. The assertion requires that a\nthrottle is NAMED (unresponsive_engines carries 'too many requests'); an empty result with no\nreason attached still fails, because that is indistinguishable from a genuinely empty search.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const rs = body.results || [];",
+                  "const bad = body.unresponsive_engines || [];",
+                  "console.log(rs.length + ' result(s), unresponsive: ' + JSON.stringify(bad));",
+                  "pm.test('The engine answered, or said why it did not', () => {",
+                  "  // sii.org.pl rate-limits hard (measured: 2 searches, then 429) and this",
+                  "  // collection fires four back to back with no pacing, so a throttle is a",
+                  "  // legitimate outcome. What is NOT acceptable is an empty result with no",
+                  "  // reason attached - that is indistinguishable from 'nothing matches'.",
+                  "  const throttled = bad.some(u => JSON.stringify(u).indexOf('too many requests') !== -1);",
+                  "  if (throttled) { console.log('   (throttled by sii.org.pl - accepted)'); return; }",
+                  "  pm.expect(rs, 'empty result and not throttled').to.have.length.above(0);",
+                  "});",
+                  "pm.test('Every result is a sii.org.pl ARTICLE url', () => {",
+                  "  // /<id>/<section>/<slug>.html. A wrong query parameter (?q=) still returns HTTP",
+                  "  // 200 and a plausible page, which is why this asserts the host AND the shape:",
+                  "  // an author (/autor/) or advert (click.php) link would not pass.",
+                  "  const wrong = rs.filter(r => !r || !/^https:\\/\\/www\\.sii\\.org\\.pl\\/\\d+\\/[^?#]*\\.html$/.test(r.url || '')).map(r => (r||{}).url);",
+                  "  pm.expect(wrong, 'not a sii article URL: ' + JSON.stringify(wrong.slice(0,3))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('Results carry a title and a summary', () => {",
+                  "  const wrong = rs.filter(r => !r || !r.title || typeof r.content !== 'string').map(r => (r||{}).url);",
+                  "  pm.expect(wrong, 'missing title/content: ' + JSON.stringify(wrong.slice(0,3))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('Summaries are prose, not the date line', () => {",
+                  "  // One markup variant writes the date/author line as class=\"above metas\"; a",
+                  "  // parser matching only class=\"notes\" returns the date as the summary.",
+                  "  const dated = rs.filter(r => /^\\s*\\d{2}\\.\\d{2}\\.\\d{4}\\s*$/.test(r.content || ''));",
+                  "  pm.expect(dated, 'the date leaked into the summary: ' + JSON.stringify(dated.map(r=>r.url))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('Dates are parsed datetimes', () => {",
+                  "  const dated = rs.filter(r => r && r.publishedDate);",
+                  "  pm.expect(dated, 'no result had a publishedDate').to.have.length.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Fork engine: dna rynkow (dnarynkow.pl)",
+      "item": [
+        {
+          "name": "DNA: US-listed card (alibaba)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{searxngUrl}}/search?q=alibaba&engines=dna%20rynkow&format=json",
+              "host": [
+                "{{searxngUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "alibaba"
+                },
+                {
+                  "key": "engines",
+                  "value": "dna rynkow"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          },
+          "description": "searx/engines/dnarynkow.py, a fork-local engine over dnarynkow.pl/spolki/?search=.\nTwo things mislead here. The search is a PARAMETER on the stock index, not a search page:\nthere is no /szukaj route, no WordPress REST API and no sitemap entry, so every path-shaped\nprobe 404s while ?search= works. And the result rows are server-rendered into the HTML body,\nnot into the ~2.5 kB __NUXT_DATA__ payload, so decoding the payload concludes 'client rendered,\nnothing here'. robots.txt names ClaudeBot, Claude-User, Claude-SearchBot and a dozen other AI\nagents under `Allow: /`; only /pulpit is disallowed and is never requested.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const rs = body.results || [];",
+                  "console.log(rs.length + ' result(s), unresponsive: ' + JSON.stringify(body.unresponsive_engines));",
+                  "pm.test('The engine answered', () => {",
+                  "  pm.expect(rs, 'empty result with no unresponsive_engines').to.have.length.above(0);",
+                  "});",
+                  "pm.test('Every result is a dnarynkow.pl /spolki/ card', () => {",
+                  "  const bad = rs.filter(r => !r || !/^https:\\/\\/dnarynkow\\.pl\\/spolki\\/[a-z0-9-]+\\/$/.test(r.url || '')).map(r => (r||{}).url);",
+                  "  pm.expect(bad, 'not a stock card URL: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('Every title carries a ticker in parentheses', () => {",
+                  "  const bad = rs.filter(r => !r || !/\\([A-Z0-9.\\-]{1,8}\\)/.test(r.title || '')).map(r => (r||{}).url);",
+                  "  pm.expect(bad, 'no ticker in title: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('Venue and currency are carried in the summary', () => {",
+                  "  const bad = rs.filter(r => !r || typeof r.content !== 'string' || !/\\s·\\s/.test(r.content)).map(r => (r||{}).url);",
+                  "  pm.expect(bad, 'no venue/currency badges: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DNA: GPW card with venue and currency (kghm)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{searxngUrl}}/search?q=kghm&engines=dna%20rynkow&format=json",
+              "host": [
+                "{{searxngUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "kghm"
+                },
+                {
+                  "key": "engines",
+                  "value": "dna rynkow"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          },
+          "description": "KGHM is a GPW listing, so the badges read GPW · PLN where Alibaba reads NYSE · USD.\nThat is what makes the summary assertion meaningful rather than decorative.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const rs = body.results || [];",
+                  "console.log(rs.length + ' result(s), unresponsive: ' + JSON.stringify(body.unresponsive_engines));",
+                  "pm.test('The engine answered', () => {",
+                  "  pm.expect(rs, 'empty result with no unresponsive_engines').to.have.length.above(0);",
+                  "});",
+                  "pm.test('Every result is a dnarynkow.pl /spolki/ card', () => {",
+                  "  const bad = rs.filter(r => !r || !/^https:\\/\\/dnarynkow\\.pl\\/spolki\\/[a-z0-9-]+\\/$/.test(r.url || '')).map(r => (r||{}).url);",
+                  "  pm.expect(bad, 'not a stock card URL: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('Every title carries a ticker in parentheses', () => {",
+                  "  const bad = rs.filter(r => !r || !/\\([A-Z0-9.\\-]{1,8}\\)/.test(r.title || '')).map(r => (r||{}).url);",
+                  "  pm.expect(bad, 'no ticker in title: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('Venue and currency are carried in the summary', () => {",
+                  "  const bad = rs.filter(r => !r || typeof r.content !== 'string' || !/\\s·\\s/.test(r.content)).map(r => (r||{}).url);",
+                  "  pm.expect(bad, 'no venue/currency badges: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DNA: multi-word Polish name (cd projekt)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{searxngUrl}}/search?q=cd%20projekt&engines=dna%20rynkow&format=json",
+              "host": [
+                "{{searxngUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "cd projekt"
+                },
+                {
+                  "key": "engines",
+                  "value": "dna rynkow"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          },
+          "description": "A Polish company name with a space, and a diacritic-free query against a Polish site.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const rs = body.results || [];",
+                  "console.log(rs.length + ' result(s), unresponsive: ' + JSON.stringify(body.unresponsive_engines));",
+                  "pm.test('The engine answered', () => {",
+                  "  pm.expect(rs, 'empty result with no unresponsive_engines').to.have.length.above(0);",
+                  "});",
+                  "pm.test('Every result is a dnarynkow.pl /spolki/ card', () => {",
+                  "  const bad = rs.filter(r => !r || !/^https:\\/\\/dnarynkow\\.pl\\/spolki\\/[a-z0-9-]+\\/$/.test(r.url || '')).map(r => (r||{}).url);",
+                  "  pm.expect(bad, 'not a stock card URL: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('Every title carries a ticker in parentheses', () => {",
+                  "  const bad = rs.filter(r => !r || !/\\([A-Z0-9.\\-]{1,8}\\)/.test(r.title || '')).map(r => (r||{}).url);",
+                  "  pm.expect(bad, 'no ticker in title: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('Venue and currency are carried in the summary', () => {",
+                  "  const bad = rs.filter(r => !r || typeof r.content !== 'string' || !/\\s·\\s/.test(r.content)).map(r => (r||{}).url);",
+                  "  pm.expect(bad, 'no venue/currency badges: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DNA: ticker-style query (xtb)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{searxngUrl}}/search?q=xtb&engines=dna%20rynkow&format=json",
+              "host": [
+                "{{searxngUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "xtb"
+                },
+                {
+                  "key": "engines",
+                  "value": "dna rynkow"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          },
+          "description": "XTB is a GPW name and also a ticker; the card resolves either way and the\ntitle carries the ticker, which the title assertion checks.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const rs = body.results || [];",
+                  "console.log(rs.length + ' result(s), unresponsive: ' + JSON.stringify(body.unresponsive_engines));",
+                  "pm.test('The engine answered', () => {",
+                  "  pm.expect(rs, 'empty result with no unresponsive_engines').to.have.length.above(0);",
+                  "});",
+                  "pm.test('Every result is a dnarynkow.pl /spolki/ card', () => {",
+                  "  const bad = rs.filter(r => !r || !/^https:\\/\\/dnarynkow\\.pl\\/spolki\\/[a-z0-9-]+\\/$/.test(r.url || '')).map(r => (r||{}).url);",
+                  "  pm.expect(bad, 'not a stock card URL: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('Every title carries a ticker in parentheses', () => {",
+                  "  const bad = rs.filter(r => !r || !/\\([A-Z0-9.\\-]{1,8}\\)/.test(r.title || '')).map(r => (r||{}).url);",
+                  "  pm.expect(bad, 'no ticker in title: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('Venue and currency are carried in the summary', () => {",
+                  "  const bad = rs.filter(r => !r || typeof r.content !== 'string' || !/\\s·\\s/.test(r.content)).map(r => (r||{}).url);",
+                  "  pm.expect(bad, 'no venue/currency badges: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DNA: second page is a different page (a, pageno=2)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{searxngUrl}}/search?q=a&engines=dna%20rynkow&format=json&pageno=2",
+              "host": [
+                "{{searxngUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "a"
+                },
+                {
+                  "key": "engines",
+                  "value": "dna rynkow"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                },
+                {
+                  "key": "pageno",
+                  "value": "2"
+                }
+              ]
+            }
+          },
+          "description": "Paging check for the engine. ?search=a reports 56 matches and returns 24 + 24 + 8.\nThis asserts page 2 is a genuinely different page rather than page 1 twice, which\nis the failure mode when the 1-based `page` parameter is passed through unshifted.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const rs = (pm.response.json().results || []);",
+                  "console.log(rs.length + ' result(s) on page 2, first: ' + ((rs[0]||{}).url));",
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Page 2 is full', () => {",
+                  "  pm.expect(rs, 'page 2 empty').to.have.lengthOf(24);",
+                  "});",
+                  "pm.test('Page 2 shares no result with page 1', function (done) {",
+                  "  // pm.sendRequest is CALLBACK-based in this newman build, not promise-based:",
+                  "  // `return pm.sendRequest(...).then(...)` throws \"then is not a function\".",
+                  "  pm.sendRequest(",
+                  "    { url: pm.variables.replaceIn('{{searxngUrl}}/search?q=a&engines=dna%20rynkow&page=1&format=json'),",
+                  "      method: 'GET' },",
+                  "    function (err, res) {",
+                  "      if (err) { return done(err); }",
+                  "      const first = (res.json().results || []).map(r => r.url);",
+                  "      const second = rs.map(r => r.url);",
+                  "      const overlap = second.filter(u => first.includes(u));",
+                  "      console.log('page1=' + first.length + ' page2=' + second.length + ' overlap=' + overlap.length);",
+                  "      try {",
+                  "        pm.expect(overlap, 'page 2 repeated page 1: ' + JSON.stringify(overlap.slice(0, 3)))",
+                  "          .to.have.lengthOf(0);",
+                  "        done();",
+                  "      } catch (e) { done(e); }",
+                  "    }",
+                  "  );",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "variable": [

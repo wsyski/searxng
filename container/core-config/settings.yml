@@ -82,6 +82,43 @@ engines:
     shortcut: lf
     categories: it
     disabled: false
+  # SII - Stowarzyszenie Inwestorow Indywidualnych (sii.org.pl), Poland's
+  # individual-investor association. Per-company commentary that names a GPW
+  # ticker in the title, which is what makes it searchable. Not an upstream
+  # engine. Verified 2026-10-11: /szukaj?search= returns 10 results each for
+  # orlen, kghm, budimex and cd projekt.
+  # Two traps, both handled in the engine and both worth not rediscovering.
+  # The parameter is `search`, NOT `q`: ?q= answers HTTP 200 with one identical
+  # 62,576-byte page for EVERY query including a nonsense one, so a wrong
+  # parameter reads as a healthy engine that found nothing. And a query that
+  # matches nothing answers 404, not an empty 200, so the engine sets
+  # raise_for_httperror = False and returns zero results instead of failing.
+  # robots.txt carries no AI-agent rule; `User-agent: *` disallows only asset
+  # paths. The engine identifies as SearXNG/1.0: the site rejects a bare
+  # "Mozilla/5.0" and "curl/8.5.0" with an empty shell but serves a full page
+  # to any realistic agent string, so honesty costs nothing here.
+  - name: sii
+    engine: sii
+    shortcut: sii
+    categories: news
+    disabled: false
+  # DNA Rynkow (dnarynkow.pl) - per-company cards for ~100 listed names.
+  # Not an upstream engine. Verified 2026-10-11.
+  # The search is a PARAMETER on the stock index, not a search page: there is no
+  # /szukaj route, no WordPress REST API and no sitemap entry for it, so every
+  # path-shaped probe 404s while ?search= works. Two things that mislead:
+  # the ~2.5 kB __NUXT_DATA__ payload holds no stock data - the result rows are
+  # server-rendered into the HTML body, so a payload-only check concludes the
+  # site is client-rendered; and `page` is 1-based in effect, since page=0 and
+  # page=1 both return the first page.
+  # robots.txt names ClaudeBot, Claude-User, Claude-SearchBot, GPTBot and a
+  # dozen others under `Allow: /`; only /pulpit is disallowed and is never
+  # requested here. Coverage is partial - Orlen has no card and returns zero.
+  - name: dna rynkow
+    engine: dnarynkow
+    shortcut: dna
+    categories: news
+    disabled: false
   # News: duckduckgo news, wikinews (default on) and qwant news answer. google news
   # ("access denied"), reuters (HTTP error), bing news (connection error, as bing) and
   # brave.news (crash) do not.
