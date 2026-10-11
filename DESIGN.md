@@ -102,12 +102,34 @@ against production default settings. Always pass `tests.unit....`.
 
 - **`test.pyright` always exits 0.** `utils/lib_sxng_test.sh` calls basedpyright
   and then `return 0`, deliberately discarding the result. `make test` runs
-  `test.pyright_modified`, which only checks `.py` files reported by
-  `git status --porcelain` (so it checks *nothing* on a clean tree) and also
-  ignores failures. A green `make test` does **not** mean types were checked.
-  Run `./manage test.pyright` by hand and read the output.
+  `test.pyright_modified`, which checks only `.py` files reported by
+  `git status --porcelain` — so it checks *nothing* on a clean tree.
   `pyrightconfig.json` points at the venv (`venvPath: local`, `venv: py3`) and
   sets per-root strictness; `searxng_extra` and `tests` are mostly relaxed.
+- **Fork change (2026-10-11): `test.pyright_modified` now gates.** It runs at
+  `--level error` and honours the exit code, so touching a `.py` file with a
+  type error fails `make test`. Verified in both directions — clean files exit
+  0, a file with `reportOptionalMemberAccess` exits 1.
+
+  Two things could not be done, and both were measured rather than assumed:
+
+  - **The full tree cannot be gated.** `basedpyright --level error` over the
+    repo reports **535 pre-existing errors**, so switching `test.pyright` on
+    would turn `make test` red for everyone. That check stays advisory.
+  - **Warnings cannot be a gate.** The untyped engine API produces ~120
+    `reportUnknown*` / `reportMissingParameterType` findings on the four fork
+    engines alone, none of them defects. Gating on warnings would be noise.
+
+  Errors are what catch defects, and this did: `reportOptionalMemberAccess`
+  on `dnarynkow.py`'s `_ticker` — the same regex run twice, guard deciding on
+  one call and body dereferencing the other — was a real smell no unit test
+  could see. It is fixed.
+
+  **`nodejs_wheel` (206 MB, a third of the venv) is load-bearing.** basedpyright
+  imports it and dies without it; the host's nvm node does not satisfy it.
+  Keeping the check working costs that, and the two gaps compound — with the
+  package gone, basedpyright prints `ModuleNotFoundError` and, before this
+  change, nothing failed.
 - **`test.pylint` runs pylint twice with different rules**:
   1. `searx/engines` with `--additional-builtins="traits,logger,categories"`.
      Engine modules are namespace-injected, so those names have no import and

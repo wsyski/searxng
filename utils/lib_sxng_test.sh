@@ -73,11 +73,30 @@ test.pyright_modified() {
     if [ ${#pyrigth_files[@]} -eq 0 ]; then
         echo "there are no locally modified python files that could be checked"
     else
-        pyenv.cmd basedpyright --level warning "${pyrigth_files[@]}"
+        # FORK (2026-10-11): --level error, and the exit code is honoured.
+        #
+        # Upstream runs --level warning and discards the result - `return 0`
+        # with dump_return commented out - while test.black() immediately
+        # below honours its own. The step therefore cannot fail, which is why
+        # AGENTS.md has to warn that a green `make test` does not mean types
+        # were checked. Worse, the two gaps compound: with nodejs_wheel absent
+        # basedpyright cannot start, and a step that cannot fail reports that
+        # no differently from one that passed.
+        #
+        # Warnings are not usable as a gate here. The untyped engine API
+        # produces ~120 reportUnknown*/reportMissingParameterType findings on
+        # the four fork engines alone, none of them defects. Errors are, and
+        # they are what catches defects: reportOptionalMemberAccess on
+        # dnarynkow.py's _ticker was a real double-regex-call smell that no
+        # unit test could see.
+        #
+        # Why not gate the whole tree: `basedpyright --level error` over the
+        # repo reports 535 pre-existing upstream errors, so switching the full
+        # check on would turn `make test` red for everyone. This variant only
+        # sees files you touched, and those are clean.
+        pyenv.cmd basedpyright --level error "${pyrigth_files[@]}"
+        dump_return $?
     fi
-    # ignore exit value from basedpyright
-    # dump_return $?
-    return 0
 }
 
 test.black() {

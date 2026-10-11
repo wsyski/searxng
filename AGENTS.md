@@ -18,8 +18,10 @@ is **not** upstream and is easy to break by merging carelessly.
   `./manage pyenv.cmd python -m nose2 -v -s tests/unit tests.unit.test_query`
   (dotted path only — see `DESIGN.md`, the bare form silently uses the wrong
   settings).
-- A green `make test` does **not** mean types were checked; `test.pyright`
-  hardcodes `return 0`. See `DESIGN.md`.
+- A green `make test` does **not** mean types were checked across the tree;
+  `test.pyright` still discards its result. The `test.pyright_modified` step
+  that `make test` actually runs *does* gate, at error level, on locally
+  modified files only. See `DESIGN.md`.
 - `client/simple/` is built into committed output under `searx/static/`.
   A theme change needs two commits in order: `make static.build.restore` (source),
   then `make static.build.commit` (build products, needs a clean tree).
