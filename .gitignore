@@ -27,3 +27,7 @@ searx/version_frozen.py
 .dir-locals.el
 
 .python-version
+
+# local deployment (container/) and postman secrets
+/container/.env.prod
+/postman/*.postman_environment.prod.json

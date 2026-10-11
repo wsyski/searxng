@@ -1,0 +1,18 @@
+# Local deployment on top of the upstream docker-compose.yml, kept separate so
+# upstream merges do not conflict. Compose loads this file automatically.
+#
+#   .env       committed: image pin, publish address/port, base URL
+#   .env.prod  gitignored: SEARXNG_SECRET (overrides server.secret_key)
+#
+# Firecrawl reaches this instance at SEARXNG_ENDPOINT=http://192.168.1.100:8080.
+
+services:
+  core:
+    env_file:
+      - ./.env
+      - ./.env.prod
+
+  # Unused: settings.yml has limiter off and no valkey.url. Start it with
+  # `docker compose --profile valkey up -d` if that changes.
+  valkey:
+    profiles: [valkey]

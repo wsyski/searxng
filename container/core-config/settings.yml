@@ -1,0 +1,88 @@
+# SearXNG settings for the local deployment (container/docker-compose.yml).
+#
+# Firecrawl (/opt/playground/firecrawl) uses this instance as its search provider:
+#   GET {SEARXNG_ENDPOINT}/search?q=...&format=json
+# so the JSON format MUST be enabled here. SearXNG ships with only `html`,
+# which is why a misconfigured instance returns 200 and zero results - the
+# response parses fine, it just has no .results array.
+#
+# Editing: this file is owned by the host user (FORCE_OWNERSHIP=false in
+# container/.env), so edit it in place, then apply with
+#   docker restart searxng-core
+# Firecrawl needs no restart; it inherits whatever engines this enables and can
+# only narrow them, via SEARXNG_ENGINES / SEARXNG_CATEGORIES /
+# SEARXNG_NEWS_CATEGORIES in its own .env.
+use_default_settings: true
+
+general:
+  instance_name: "local searxng"
+  debug: false
+
+server:
+  # Bind on all interfaces inside the container. The host side is published on
+  # SEARXNG_HOST (container/.env, the LAN address), which makes this an open
+  # search proxy for the LAN: keep it off untrusted networks. (server.port is
+  # ignored in the container, see SEARXNG_PORT in container/.env.)
+  bind_address: "0.0.0.0"
+  port: 8080
+  # secret_key comes from SEARXNG_SECRET in container/.env.prod (gitignored).
+  limiter: false
+  image_proxy: false
+
+search:
+  formats:
+    - html
+    - json
+
+outgoing:
+  request_timeout: 6.0
+  max_request_timeout: 12.0
+  pool_connections: 20
+  pool_maxsize: 10
+
+# Engines probed from this egress IP on 2026-10-10 (q=..., engines=<one>):
+# answering: yahoo, "duckduckgo web", mwmbl. Blocked: duckduckgo (CAPTCHA), brave and
+# google cse (429, 180 s suspensions that slow every query), google ("access denied"),
+# qwant (CAPTCHA), bing (connection error), yep. Re-probe before re-enabling one:
+#   curl -G .../search --data-urlencode q=test --data-urlencode engines=<name> \
+#     --data-urlencode format=json | jq '.results|length, .unresponsive_engines'
+engines:
+  - name: yahoo
+    disabled: false
+  - name: duckduckgo web
+    disabled: false
+  - name: mwmbl
+    disabled: false
+  - name: wikipedia
+    disabled: false
+  - name: duckduckgo
+    disabled: true
+  - name: brave
+    disabled: true
+  - name: google cse
+    disabled: true
+  # Developer (it/packages/repos): off by default upstream, answering here.
+  # github, stackoverflow, askubuntu, superuser, mdn, pypi, docker hub are on by default.
+  - name: npm
+    disabled: false
+  - name: pkg.go.dev
+    disabled: false
+  - name: lib.rs
+    disabled: false
+  - name: huggingface
+    disabled: false
+  - name: hackernews
+    disabled: false
+  # News: duckduckgo news, wikinews (default on) and qwant news answer. google news
+  # ("access denied"), reuters (HTTP error), bing news (connection error, as bing) and
+  # brave.news (crash) do not.
+  - name: qwant news
+    disabled: false
+  - name: google news
+    disabled: true
+  - name: reuters
+    disabled: true
+  - name: bing news
+    disabled: true
+  - name: brave.news
+    disabled: true
