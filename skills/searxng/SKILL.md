@@ -73,8 +73,8 @@ opposite diagnoses, and `references/categories.md` has the table.
 | Reach for | When |
 |---|---|
 | `sxq` | Results, titles, snippets, and which engines produced them |
-| `firecrawl-search` | Same job, already wired into the stack — prefer it |
-| `firecrawl-scrape`, `defuddle` | You have a URL and need the page's text |
+| `/firecrawl` search | Same job, already wired into the stack — prefer it |
+| `/firecrawl` scrape, `defuddle` | You have a URL and need the page's text |
 | A market-data API | You need a price. Snippets are not numbers |
 
 ## References

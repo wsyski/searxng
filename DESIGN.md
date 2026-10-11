@@ -47,7 +47,8 @@ The cost is two copies and a sync step, so the sync is a target rather than a ha
 | `make skill.sync` | `rsync -a --delete --delete-excluded` from `skills/searxng/` to `$SKILL_HUB/searxng/`, excluding `__pycache__` |
 | `make skill.check` | `diff -r` the two trees; non-zero on drift, **skips cleanly** when no hub is present |
 
-`$SKILL_HUB` defaults to `~/.agents/skills` and is overridable, which is how the
+Both targets delegate to `skills/sync.sh`, which is byte-identical to the copy in
+`/opt/playground/firecrawl` and can be run directly. `$SKILL_HUB` defaults to `~/.agents/skills` and is overridable, which is how the
 targets get tested against a scratch directory.
 
 **Run `make skill.sync` after editing the skill.** Nothing else will tell you it is
