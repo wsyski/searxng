@@ -1,6 +1,6 @@
 {
   "info": {
-    "_postman_id": "75a3e47c-8bc2-410b-8fc0-4022aa00c191",
+    "_postman_id": "3b2eecec-222b-4ad8-9e1b-502c3ee996a0",
     "name": "searxng-integration-test",
     "description": "Direct requests to the local SearXNG instance (container/docker-compose.yml), the same way a metasearch client (Firecrawl, Hermes, a browser bookmark) calls it. SearXNG has no authentication: whatever address SEARXNG_HOST publishes (container/.env) is an open search proxy for that network.\n\ncontainer/core-config/settings.yml must keep search.formats [html, json] - without json, clients get 200 responses with no results array.\n\nThe last request covers liferay_forum, a fork-local engine. The other two external sources probed for this fork - learn-answer and bankier.pl - render client-side and return nothing useful over plain HTTP, so they are Firecrawl scrapes and live in the firecrawl project's collection, folder \"External sources (Firecrawl scrape)\". Firecrawl's own view of this instance (/v2/search mappers) is there too.\n\n{{searxngUrl}} is a collection variable so these run without an environment; point it at the published host. Nothing here needs the firecrawl stack to be up.\n\nThe collection carries one pre-request guard: a request whose host variable does not resolve to a real URL is skipped with a console warning naming the variable, which is what a shared-link copy (no collection variable, no environment selected) produces.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
