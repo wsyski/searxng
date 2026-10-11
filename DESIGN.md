@@ -238,10 +238,29 @@ changes to the base file do not conflict.
 - `container/.env` — **committed**: pinned `SEARXNG_VERSION` (tag + digest),
   `SEARXNG_HOST` / `SEARXNG_PORT` / `SEARXNG_BASE_URL`, `FORCE_OWNERSHIP`.
 - `container/.env.prod` — **gitignored** (see the `.gitignore` entry), holds
-  `SEARXNG_SECRET`. Never commit it.
+  `SEARXNG_SECRET` and `GITHUB_PERSONAL_ACCESS_TOKEN`. Never commit it.
+  Compose passes it into the container through `env_file`, so it is the only
+  place a credential may live here: `settings.yml` is **tracked**, and nothing
+  in the settings schema accepts a `$ENV` override for an engine key
+  (`grep -c "env=" searx/settings_defaults.py` is 0), so a token written into
+  settings.yml would reach the repository's history.
+- **A credential in `.env.prod` does nothing until its consumer exists.**
+  `MASSIVE_API_KEY` and `FINANCIAL_DATASETS_API_KEY` also sit there, but no
+  SearXNG engine reads either — they are portfolio credentials, sourced from
+  `/etc/hermes/.env`. Harmless because the file is gitignored; noted so their
+  presence is not mistaken for wiring.
 - `container/core-config/settings.yml` — bind-mounted over `/etc/searxng`.
   Owned by the host user because `FORCE_OWNERSHIP=false`, so it can be edited
   in place and applied with `docker restart searxng-core`.
+- **The container runs the pinned upstream image, not this repo's source.**
+  Anything edited under `searx/` here is inert until it is bind-mounted in
+  `docker-compose.override.yml`, and that failure is silent: the repo looks
+  patched while the container keeps the image's copy. Currently mounted —
+  `liferay_forum.py`, `sii.py`, `dnarynkow.py`, `ksiazak.py` (fork-local) and
+  `github.py` (an upstream engine patched fork-side to read the GitHub token
+  from the environment). Check with
+  `docker exec searxng-core grep -c GITHUB_PERSONAL_ACCESS_TOKEN /usr/local/searxng/searx/engines/github.py`,
+  not by reading the repo.
 - It sets `use_default_settings: true` and crucially
   `search.formats: [html, json]`. SearXNG ships with `html` only, and the
   Firecrawl instance at `/opt/playground/firecrawl` consumes
@@ -255,6 +274,30 @@ changes to the base file do not conflict.
 - SearXNG has **no authentication.** The compose port is published on a LAN
   address deliberately, making it an open search proxy for the LAN. Do not
   publish it beyond a trusted network.
+- The published port is **8888, not 8080** (moved 2026-10-11). 8080 is what a
+  dozen common images default to — Jupyter, dev servers, proxies — so it is the
+  port most likely to collide with something else on this host. The instance
+  binds the LAN address, **not loopback**: `localhost:8888` is refused even
+  though 8888 is the published port, which trips up any borrowed script that
+  defaults to `http://localhost`.
+- `SEARXNG_BASE_URL` must name the address the instance is actually published
+  on. The docs state it is "used to create correct inbound links", and with
+  `http://localhost:8888/` every generated link — the RSS alternate on each
+  search page, two in `/preferences` — pointed at an address that refuses
+  connections, including from this host. The `server.port` comment in
+  settings.yml says that key is "ignored in the container", which is true and
+  very easy to read as "nothing in this block matters".
+- **Changing the port means restarting every consumer, and a consumer left
+  behind does not fail loudly.** Firecrawl ran for 8 hours after the move with
+  `SEARXNG_ENDPOINT` still on `:8080` inside its process: search still returned
+  results, because it fell back to another provider. Configuring SearXNG as the
+  search provider was silently undone. Check the *process*, not the file —
+  `docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' firecrawl-api-1 | grep SEARXNG`.
+  The port appears in five places: `container/.env` (`SEARXNG_PORT`,
+  `SEARXNG_BASE_URL`), `core-config/settings.yml` (`server.port`),
+  `firecrawl/.env`, `/etc/hermes/.env`, and the Postman environment — which
+  exists twice, in the repo and in the Postman cloud, and the collection
+  carries its own `searxngUrl` variable that the environment shadows locally.
 - The `valkey` service is defined but unused by default (limiter off, no
   `valkey.url`); it sits behind the `valkey` compose profile —
   `docker compose --profile valkey up -d`.
