@@ -106,6 +106,7 @@ EOF
     weblate.help
     container.help
     data.help
+    skill.help
     test.help
     themes.help
     static.help

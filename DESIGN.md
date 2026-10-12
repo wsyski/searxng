@@ -46,6 +46,7 @@ The cost is two copies and a sync step, so the sync is a target rather than a ha
 |---|---|
 | `make skill.sync` | `rsync -a --delete --delete-excluded` from `skills/searxng/` to `$SKILL_HUB/searxng/`, excluding `__pycache__` |
 | `make skill.check` | `diff -r` the two trees; non-zero on drift, **skips cleanly** when no hub is present |
+| `make skill.validate` | agnix over the repo: every `SKILL.md` parses; non-zero on an ERROR, **skips cleanly** when `uvx`/`jq` is absent |
 
 Both targets delegate to `skills/sync.sh`, which is byte-identical to the copy in
 `/opt/playground/firecrawl` and can be run directly. `$SKILL_HUB` defaults to `~/.agents/skills` and is overridable, which is how the
@@ -74,6 +75,20 @@ build go red for a reason unrelated to the code — and would start failing on a
 commit if someone ever edits the hub copy directly, which is how a check teaches
 people to ignore it. `test.skill` exists so it can be invoked from CI or a
 pre-commit hook on its own.
+
+`skill.validate` is the second half of the same problem. A `SKILL.md` whose
+frontmatter will not parse (`AS-016`, the rule the IDE plugin reports as a broken
+skill) is a skill none of the three harnesses can read — and because the hub copy is
+the one they load, a break here is a break in the loaded skill. It runs agnix, the
+linter behind that plugin, through `uvx`, so nothing is installed on PATH, and reads
+`.agnix.toml`. That file names the **`claude-code` runtime** rather than disabling
+`AS-016`: the skill carries nested `metadata.hermes`, which the universal Agent
+Skills spec rejects and the runtime that actually loads this skill accepts — so the
+rule is answered, not muted. Like `skill.check` it skips when the linter cannot be
+fetched, and `.github/workflows/skills.yml` turns a skip back into a failure, because
+a skipped validator validated nothing. The target also proves its own pass: it plants
+a deliberately broken `SKILL.md` and fails if agnix does **not** report it, so a green
+run is one that could have been red.
 
 ---
 

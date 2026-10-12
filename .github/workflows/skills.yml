@@ -1,0 +1,75 @@
+---
+# yamllint disable rule:line-length
+name: Skills
+
+# The skills are LOADED files: a frontmatter that will not parse (AS-016) means the
+# skill cannot be read by the harnesses that load it, and because the hub copy is
+# mirrored from here (`make skill.sync`) the broken copy would be the one they read.
+# `manage skill.validate` runs agnix over the repository - the same linter the IDE
+# plugin runs - and proves its own pass by a deliberate break, so a green step here
+# means something.
+
+# yamllint disable-line rule:truthy
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - skills/**
+      - .agnix.toml
+      - utils/lib_sxng_skill.sh
+      - Makefile
+      - .github/workflows/skills.yml
+  pull_request:
+    branches:
+      - master
+    paths:
+      - skills/**
+      - .agnix.toml
+      - utils/lib_sxng_skill.sh
+      - Makefile
+      - .github/workflows/skills.yml
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate skills
+    # Fork-only: skills/ and .agnix.toml are not upstream's, so this must not run
+    # for a branch headed for searxng/searxng.
+    if: github.repository == 'wsyski/searxng'
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: "false"
+
+      # uvx fetches agnix (a wheel with a prebuilt binary), so nothing is installed
+      # by hand. A runner without it would make the case SKIP, and a skipped
+      # validator is green without validating anything - the guard below turns such
+      # a skip back into a failure.
+      - name: Setup uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
+
+      - name: Every SKILL.md validates (agnix)
+        run: |
+          set -uo pipefail
+          log="$(mktemp)"
+          status=0
+          make skill.validate 2>&1 | tee "$log" || status=$?
+          if [ "$status" -ne 0 ]; then
+            echo "::error::the skill-validity check failed (see above)"
+            exit "$status"
+          fi
+          if grep -q 'SKILL_VALIDATE_SKIPPED' "$log"; then
+            echo "::error::the skill-validity check SKIPPED - nothing was validated."
+            echo "::error::the reason is printed above; do not accept a green step here."
+            exit 1
+          fi

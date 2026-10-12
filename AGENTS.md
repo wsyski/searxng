@@ -40,5 +40,11 @@ is **not** upstream and is easy to break by merging carelessly.
   the old text and nothing says so, because the skill is *listed*: the model
   never loads it unprompted, so the divergence surfaces only when someone types
   `/searxng`. `make skill.check` reports drift and exits non-zero. See `DESIGN.md`.
+- **The skill is validated by agnix**, the linter the IDE plugin runs: `make
+  skill.validate` fails on any `SKILL.md` that will not parse (an unquoted colon in
+  the frontmatter, say) and proves its own pass by planting a broken one. `.agnix.toml`
+  names the `claude-code` runtime rather than disabling the rule, because the skill's
+  nested `metadata.hermes` is valid there and not under the generic spec.
+  `.github/workflows/skills.yml` runs it and fails if it skipped. See `DESIGN.md`.
 - Commits: present tense, imperative, ≤72-char subject. Open an issue before
   large architectural changes.

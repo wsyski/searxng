@@ -1,0 +1,40 @@
+# agnix — the linter IntelliJ's plugin runs over this repository's agent configs.
+#
+# RUNTIME, not a rule switch. skills/searxng/SKILL.md declares itself manual-only with
+# `metadata.hermes.requires_tools`, and the universal Agent Skills spec says `metadata` is a
+# flat string→string map. Under the default (generic) target that is an AS-016 error (HIGH,
+# MUST, "Skill Parse Error") on the skill; declaring claude-code accepts the nested form and
+# the finding disappears.
+#
+# So it is not silenced — it is validated against the runtime that actually loads this skill,
+# which is also the runtime whose plugin reports it in the IDE. Measured with agnix 0.57.0:
+# no config = 1 error on the skill, tools = ["claude-code"] = 0.
+#
+# `tools`, NOT `target`. `target = "ClaudeCode"` looks equivalent and does nothing: agnix
+# deprecated that field ("Field 'target' is deprecated") and ignores it without warning, so a
+# config carrying only it validates exactly as if no config existed. That is why
+# `manage skill.validate` proves the repo clean by a deliberate break rather than by trusting a
+# key's presence.
+tools = ["claude-code"]
+
+# Warning is the floor: an ERROR is a file that will not load. What is left here are warnings in
+# the root AGENTS.md/DESIGN.md — instruction-layer precedence, "lost in the middle" keyword
+# placement, negative instructions without a positive alternative, hard-coded ~/.agents paths —
+# upstream prose this fork does not own or the documented convention of a skill that lives in the
+# repo and is mirrored to the hub.
+severity = "Warning"
+
+# .vscode/settings.json is editor configuration, not agent configuration, and its trailing
+# comma is legal JSONC that agnix's hook parser reads as a broken JSON document (CC-HK-012, an
+# ERROR). Measured with agnix 0.57.0: without the exclude below the repository is 1 error, with
+# it 0.
+#
+# local/ needs no entry: agnix honours .gitignore and local/ is ignored, so the venv — and the
+# vendored `.agents/skills/typer/SKILL.md` inside it — is already out of scope. Verified by
+# planting a SKILL.md under local/ and watching files_checked stay put.
+exclude = [".vscode/**"]
+
+[rules]
+# Nothing is disabled. The one rule that fires on the skill (AS-016) is answered by the runtime
+# above, and a disabled rule here would be a second way to hide it — one a reader has to notice
+# is gone.
