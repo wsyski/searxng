@@ -58,6 +58,14 @@ jobs:
       - name: Setup uv
         uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
 
+      # The skill ships code, not only prose: scripts/sxq. Its diagnostics name
+      # two SearXNG behaviours that make a search silently return the wrong
+      # thing, which is exactly the class of bug a prose file cannot catch. This
+      # runs on the runner's own python3, deliberately - sxq is stdlib-only and
+      # must keep working where no venv exists, so its tests must too.
+      - name: Skill scripts pass their tests
+        run: make skill.test
+
       - name: Every SKILL.md validates (agnix)
         run: |
           set -uo pipefail

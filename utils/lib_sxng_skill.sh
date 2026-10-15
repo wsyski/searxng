@@ -19,6 +19,7 @@
 #
 #   make skill.sync    copy skills/<name>/ -> $SKILL_HUB/<name>/
 #   make skill.check   fail if the two trees differ (skips if the hub is absent)
+#   make skill.test    run the skill's own stdlib unittest suite
 
 # The logic lives in skills/sync.sh, byte-identical to the copy in
 # /opt/playground/firecrawl; these targets only delegate to it. It mirrors every
@@ -38,6 +39,7 @@ skill.help() {
     sync     : copy each skills/<name>/ -> \${SKILL_HUB:-~/.agents/skills}/<name>/
     check    : verify the hub copies match; non-zero on drift, skip if no hub
     validate : lint every SKILL.md with agnix; non-zero on an error, skip if no uvx
+    test     : run skills/*/tests with stdlib unittest; non-zero on a failure
 EOF
 }
 
@@ -47,6 +49,37 @@ skill.sync() {
 
 skill.check() {
     "${REPO_ROOT}/skills/sync.sh" check
+}
+
+# Found rather than listed, for the same reason skill.validate does it: a glob
+# that no longer matches would leave the step passing over everything.
+skill.test() {
+    build_msg TEST "[skill] unittest"
+    local dir
+    local dirs=()
+    for dir in "${REPO_ROOT}"/skills/*/tests; do
+        if [ -d "$dir" ]; then
+            dirs+=("$dir")
+        fi
+    done
+    if [ "${#dirs[@]}" -eq 0 ]; then
+        err_msg "no skills/*/tests directory - the glob is wrong"
+        return 1
+    fi
+    for dir in "${dirs[@]}"; do
+        # Deliberately NOT ./manage pyenv.cmd: sxq is stdlib-only and must keep
+        # working on a host with no venv, so its tests have to as well. A failing
+        # suite returns immediately rather than being counted and summarised -
+        # a green step here has to mean the tests ran.
+        #
+        # The venv is dropped from PATH for the same reason. manage line 48 puts
+        # PY_ENV on PATH as a RELATIVE path ("local/py3/bin"), so python3
+        # resolves to the venv interpreter through a relative entry and CPython
+        # prints two "Unexpected value in sys.prefix" RuntimeWarnings on stderr -
+        # noise in a step whose green has to mean something ran.
+        PATH="${PATH#"${PY_ENV_BIN}":}" python3 -m unittest discover -s "$dir" -v || return 1
+    done
+    build_msg TEST "[skill] unittest OK - ${#dirs[@]} suite(s)"
 }
 
 # agnix's JSON report on stdout; non-zero when it cannot be run or parsed. The

@@ -106,6 +106,33 @@ def report_unresponsive(payload: dict) -> None:
         )
 
 
+def report_foreign_engines(payload: dict, pinned: str) -> None:
+    """SearXNG ignores an unknown or inactive engine name and runs the default
+    search instead - measured 2026-10-15: engines='mojeek news' returned 96 rows
+    from mwmbl, duckduckgo web and sii. Say so instead of letting it pass."""
+    want = {e.strip() for e in pinned.split(",") if e.strip()}
+    got = {e for r in payload.get("results", []) for e in (r.get("engines") or [])}
+    foreign = sorted(got - want)
+    if foreign:
+        print(f"\n!! results came from engines you did not pin: {', '.join(foreign)}", file=sys.stderr)
+        print(
+            f"   {', '.join(sorted(want - got)) or 'the pinned engine'} is probably not loaded "
+            "(inactive or misspelt) - check `sxq --health`.",
+            file=sys.stderr,
+        )
+
+
+def report_empty_time_range(payload: dict, time_range: str) -> None:
+    """An engine without time_range_support is dropped when a range is set, so
+    an empty, error-free answer can mean no engine ran at all."""
+    if time_range and not payload.get("results") and not payload.get("unresponsive_engines"):
+        print(
+            f"\n!! empty with time_range={time_range} and no failing engine: probably no selected "
+            "engine supports time_range. Retry without --time-range and filter by date.",
+            file=sys.stderr,
+        )
+
+
 def main() -> None:
     p = argparse.ArgumentParser(
         prog="sxq",
@@ -173,6 +200,12 @@ def main() -> None:
 
     for suggestion in (payload.get("suggestions") or [])[:3]:
         print(f"  did you mean: {suggestion}?")
+
+    # Two ways the answer can be somebody else's, or nobody's. Both look
+    # healthy, so neither can be left to the reader of the result list.
+    if args.engines:
+        report_foreign_engines(payload, args.engines)
+    report_empty_time_range(payload, args.time_range)
 
 
 if __name__ == "__main__":
