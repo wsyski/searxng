@@ -129,16 +129,33 @@ engines:
     engine: ksiazak
     shortcut: ksz
     disabled: false
-  # News: duckduckgo news, wikinews (default on) and qwant news answer. google news
-  # ("access denied"), reuters (HTTP error), bing news (connection error, as bing) and
-  # brave.news (crash) do not.
+  # News: duckduckgo news, wikinews (default on), qwant news and bing news answer.
+  # None of the first three supports time_range, and SearXNG drops an engine that
+  # does not when a range is set - so `-c news` + `time_range` ran ZERO engines and
+  # returned an empty, error-free response. bing news supports it. Re-probed
+  # 2026-10-15 (disabled 2026-10-10 for "connection error"): 10 results with no
+  # range, 8 with time_range=month. google news ("access denied"), reuters (HTTP
+  # error, still on 2026-10-15) and brave.news (crash) stay off. mojeek news,
+  # startpage news and yahoo news are `inactive` upstream (proof-of-work captchas).
+  #
+  # enable_http3: false is the "connection error" the 2026-10-10 note recorded, and
+  # it was never bing being down. bing_news.py sets enable_http3 = True, which sends
+  # every request over QUIC; UDP/443 is filtered on this egress, so the transport
+  # died before a request left and SearXNG answered "HTTP connection error".
+  # Measured from inside the container on 2026-10-15:
+  #   curl_cffi http_version=V3ONLY -> (56) ngtcp2_conn_writev_stream ERR_DRAINING
+  #   curl_cffi http_version=V2_0   -> 200, 16110 bytes
+  # SearXNG copies every settings key onto the engine module (searx/engines/
+  # __init__.py, the setattr loop over engine_data), so this one line turns the
+  # flag off without patching an upstream engine file.
   - name: qwant news
     disabled: false
+  - name: bing news
+    disabled: false
+    enable_http3: false
   - name: google news
     disabled: true
   - name: reuters
-    disabled: true
-  - name: bing news
     disabled: true
   - name: brave.news
     disabled: true
