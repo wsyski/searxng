@@ -359,6 +359,34 @@ changes to the base file do not conflict.
   reason per engine (CAPTCHA, HTTP 429 with 180 s suspensions, "access denied").
   Re-probe before re-enabling any of them; the current egress IP is what was
   probed.
+- **`bing news` is the only enabled news engine that supports `time_range`.**
+  SearXNG *drops* every engine whose `time_range_support` is False when a range
+  is set, and all four others in `news` are False, so `-c news` plus a
+  `time_range` used to run **zero** engines and answer with an empty result and
+  an empty `.unresponsive_engines` — a healthy-looking empty. The block is
+  additionally pinned to `enable_http3: false`, because `bing_news.py` asks for
+  HTTP/3 and UDP/443 is filtered on this egress: QUIC fails with
+  `curl (56) ngtcp2_conn_writev_stream ERR_DRAINING` before a request leaves,
+  which is what the file's older "connection error" note recorded. No upstream
+  engine file is patched for this — SearXNG copies every settings key onto the
+  engine module (`searx/engines/__init__.py`, the `setattr` loop over
+  `engine_data`), so one line does it. Verified 2026-10-15: 4 results for
+  `-c news --time-range week`, all `bing news`.
+- **`sii` filters on every query term.** sii.org.pl ORs the terms of
+  `/szukaj?search=` and matches fragments, so `zzqxv term` returned the same ten
+  rows as `term`. `sii` is in `general`, which put those ten unrelated rows into
+  every default search — 10 of 96 for `q=ECB interest rate`, and therefore into
+  Firecrawl's results. `searx/engines/sii.py` keeps a row only when **every**
+  term appears in its title or teaser, folded case- and diacritic-insensitively
+  (`ł`→`l` explicitly, which NFKD alone does not do). The OR happens
+  server-side, so a filter in `response()` is the only place that can see both
+  the query and the row.
+- **Pinning an engine this instance does not have runs the default search, and
+  says nothing.** `engines=mojeek news` returns 96 results from `mwmbl`,
+  `duckduckgo web` and `sii`. That is upstream behaviour and is not worked
+  around here; `sxq` detects it instead — each result carries its `engines`, so
+  the skill's own tool compares them against the pin and warns on stderr, and
+  warns again when a `time_range` came back empty with nothing failing.
 - SearXNG has **no authentication.** The compose port is published on a LAN
   address deliberately, making it an open search proxy for the LAN. Do not
   publish it beyond a trusted network.

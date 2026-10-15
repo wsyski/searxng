@@ -61,12 +61,21 @@ It is the single most consequential thing on this page.
 `Suspended: …` means the engine asked too fast, **not** that the site blocks this host —
 opposite diagnoses, and `references/categories.md` has the table.
 
-## Two behaviours that mislead
+## Three behaviours that mislead
 
-- **`--time-range` with `-c news` returns zero** — no error, empty `.unresponsive_engines`.
-  `-c general` with `--time-range` works. Take a window and filter on `publishedDate`.
+- **`--time-range` with `-c news` works, through `bing news`** — the only enabled news engine with
+  `time_range_support`. The other four are *dropped* when a range is set, so before it was enabled
+  the search ran zero engines and returned nothing with an empty `.unresponsive_engines`. If you
+  see that empty again, `sxq` says so on stderr: no selected news engine supports the range.
+  `-c general` with `--time-range` also works; otherwise take a window and filter on `publishedDate`.
 - **A hit does not mean the company is in the title.** Książak reads the WordPress REST API,
   whose `search` matches body text, so `orlen` returns a note about another company.
+- **A `sii` hit carries every query term.** sii.org.pl ORs the terms, so `zzqxv term` returns the
+  same ten rows as `term`; the engine drops any row missing a term (measured 2026-10-15, where
+  those ten rows were 10 of 96 in a general search). A `sii` result therefore names its company —
+  but a *miss* can still be a synonym (`PKN` for `Orlen`), so issue the ticker and the name.
+- **A pinned engine that is not loaded runs the default search** and says nothing. `sxq` warns on
+  stderr when results come from engines you did not pin; see `references/categories.md`.
 
 ## When to use this
 

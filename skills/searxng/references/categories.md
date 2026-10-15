@@ -124,3 +124,33 @@ sxq test -e <engine> -n 1                      # one engine, pinned
 
 Pin before blaming an engine. A category query routes across a dozen engines and a single
 failure in `.unresponsive_engines` may be noise.
+
+## A pinned engine that is not loaded runs the default search instead
+
+`engines=mojeek news` — an engine name this instance has never heard of — does **not** return an
+error. It returns 96 results from `mwmbl`, `duckduckgo web` and `sii`, because SearXNG drops the
+unknown name from the selection and falls back to the default categories. Measured 2026-10-15:
+
+| `engines=` | Results | Attributed to |
+|---|---|---|
+| `mojeek news` (inactive upstream) | 96 | `mwmbl` 77, `duckduckgo web` 9, `sii` 10 |
+| `startpage news` (inactive upstream) | 97 | the same set plus `yahoo` |
+| `bing news` | 10 | `bing news` 10 |
+
+Nothing in the response says the pin was ignored, so a caller who pins one engine and counts
+results gets somebody else's. `sxq` now compares the `engines` on each result against the pin and
+warns on stderr when they differ; `sxq --health` reports the engine count if the name may be
+misspelt. This is upstream behaviour and is not worked around here.
+
+## `--time-range` needs an engine that supports it
+
+SearXNG **drops** every engine whose `time_range_support` is False when a range is set. In `news`
+that was all four of them — `duckduckgo news`, `qwant news`, `wikinews`, `sii` — so `-c news
+--time-range week` ran **zero** engines and answered with an empty result and an empty
+`.unresponsive_engines`. That is a healthy-looking empty.
+
+`bing news` is enabled and does support ranges; `2026-10-15` it answered 4 results for
+`-c news --time-range week`, all attributed to `bing news`. It needs `enable_http3: false` in
+`container/core-config/settings.yml`, because `bing_news.py` asks for HTTP/3 and UDP/443 is
+filtered on this host. `sxq` warns on stderr when a range is set, the result is empty, and nothing
+failed — the signature of that exact configuration.
