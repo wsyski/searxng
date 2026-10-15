@@ -428,6 +428,30 @@ changes to the base file do not conflict.
   `SEARXNG_URL=http://127.0.0.1:8888 ./postman/run.sh`. The collection checks
   `/config`, direct JSON search, news, images, and strict safesearch. Run it
   after changing `container/core-config/settings.yml` or the pinned image.
+- **`test.robot` needs a real `firefox` binary on PATH, not a packaging
+  wrapper.** Two host facts make it fail in ways that name neither cause nor fix:
+  - Ubuntu's `/usr/bin/firefox` is a **snap shim** — a shell script. Selenium's
+    Selenium Manager probes it, reads `Mozilla Firefox 157.0.1` off it, and hands
+    *geckodriver* the shim; geckodriver execs it, it exits 1, and the whole suite
+    dies with `Process unexpectedly closed with status 1`. `tests/robot/__main__.py`
+    resolves both binaries from PATH and passes them in, so the browser under
+    test is the one on PATH rather than a second one found by another search.
+  - The snap's `geckodriver` cannot be signalled from outside its confinement, so
+    a failed run **leaks one process per test** that `pkill` cannot reap.
+  So this host carries a plain Firefox under `local/firefox` with
+  `local/py3/bin/firefox` pointing at it (`manage` puts `local/py3/bin` first on
+  PATH). `local/` is gitignored, so this is environment, not repository.
+- **`gecko.driver` checks the driver it installed, not the one on PATH.**
+  `manage gecko.driver` unpacks a pinned geckodriver into `${PY_ENV_BIN}`, but
+  the "already installed" test used to run bare `geckodriver -V` — which the snap
+  satisfies. It therefore reported success while `${PY_ENV_BIN}/geckodriver` did
+  not exist, and `test.robot` went on to run on a driver nobody chose. Verified
+  2026-10-15 by moving the file away: the old check said "already installed", the
+  new one downloads the pin.
+- **`shellcheck` is not installed by `manage`** and `test.shell` calls it by bare
+  name from the Makefile, so it must be on the ambient PATH (`~/.local/bin` here)
+  or that step cannot run. It is the one `make test` dependency with no target to
+  install it.
 
 ---
 

@@ -179,7 +179,18 @@ gecko.driver() {
         set -e
         pyenv.activate
 
-        INSTALLED_VERSION=$(geckodriver -V 2>/dev/null | head -1 | awk '{ print "v" $2}') || INSTALLED_VERSION=""
+        # Ask the file this function is responsible for, not whatever
+        # `geckodriver` happens to resolve to on PATH. Ubuntu ships one in the
+        # snap, so a bare `geckodriver -V` reports the pinned version, this
+        # function reports "already installed" while ${PY_ENV_BIN}/geckodriver
+        # does not exist, and test.robot then runs on a driver nobody chose.
+        # Measured 2026-10-15, and it is what made the robot suite unusable on
+        # this host until the path was pinned here.
+        INSTALLED_VERSION=""
+        if [ -x "${PY_ENV_BIN}/geckodriver" ]; then
+            INSTALLED_VERSION=$("${PY_ENV_BIN}/geckodriver" -V 2>/dev/null | head -1 | awk '{ print "v" $2}') ||
+                INSTALLED_VERSION=""
+        fi
         set +e
         if [ "${INSTALLED_VERSION}" = "${GECKODRIVER_VERSION}" ]; then
             build_msg INSTALL "geckodriver already installed"
