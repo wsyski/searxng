@@ -13,7 +13,7 @@ The sibling files: `README.md` has the short "This fork" summary,
 
 | Path | Owner |
 |---|---|
-| `searx/` | the application package. `searx/engines/` (253 modules), `searx/plugins/`, `searx/answerers/`, `searx/search/processors/`, `searx/result_types/`, `searx/enginelib/`, `searx/botdetection/`, `searx/network/`, `searx/favicons/` |
+| `searx/` | the application package. `searx/engines/` (256 modules), `searx/plugins/`, `searx/answerers/`, `searx/search/processors/`, `searx/result_types/`, `searx/enginelib/`, `searx/botdetection/`, `searx/network/`, `searx/favicons/` |
 | `searx/settings.yml` | 3500-line **default** settings (see Runtime / config) |
 | `searx/static/themes/simple/` | **committed build output** of `client/simple/` |
 | `client/simple/` | frontend source: Vite + TypeScript + LESS, Biome + Stylelint |
