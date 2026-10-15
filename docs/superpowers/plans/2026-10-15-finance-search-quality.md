@@ -31,7 +31,7 @@
 
 The spec's numbers were taken from a LAN VM whose direct requests to sii.org.pl get 403. Re-take the two that decide the design, from the host.
 
-- [ ] **Step 1: Confirm the site ORs terms (direct, host)**
+- [x] **Step 1: Confirm the site ORs terms (direct, host)**
 
 ```bash
 for q in 'zzqxv' 'zzqxv+term' 'term'; do
@@ -43,7 +43,7 @@ done
 
 Expected: `zzqxv 0` (or a 404 body), `zzqxv+term` ≈ `term` ≈ 10. If `zzqxv+term` is 0, the site ANDs terms and the defect is in how SearXNG passes the query: stop, record the finding in the spec, and do Task 1 before re-measuring.
 
-- [ ] **Step 2: Confirm the news time-range gap and the bing news probe**
+- [x] **Step 2: Confirm the news time-range gap and the bing news probe**
 
 ```bash
 SX=http://192.168.1.100:8888
@@ -57,6 +57,19 @@ Expected: `0` / `[]`, then `{"bing news": N}` with N > 0. If bing news fails, Ta
 
 No commit.
 
+> **What actually happened.** Step 1 confirmed the site ORs: `zzqxv` → 0, `zzqxv+term` → 10,
+> `term` → 10. Step 2's first command printed the expected `0` / `[]`; the second printed
+> `null`, meaning `bing news` returned nothing at all. So the "record and skip" contingency
+> fired — and skipping would have left defect 2 in place, because enabling `bing news` as
+> written still returns zero.
+>
+> The cause is the transport. `bing_news.py` sets `enable_http3 = True`, so SearXNG asks
+> curl_cffi for HTTP/3, and UDP/443 is filtered on this egress. The "connection error" the
+> settings file recorded on 2026-10-10 was never bing being down. Task 4 therefore adds
+> `enable_http3: false` beside `disabled: false` — still a settings-only change, since
+> `searx/engines/__init__.py` `setattr`s every settings key onto the engine module. Details
+> and measurements are in the spec; the decision row is D5.
+
 ---
 
 ### Task 1: URL-encode the query in `sii` and `dnarynkow`
@@ -66,7 +79,7 @@ No commit.
 - Modify: `searx/engines/dnarynkow.py` (`request`)
 - Test: `tests/unit/test_engine_sii.py`, `tests/unit/test_engine_dnarynkow.py`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `SiiEngineTests`:
 
@@ -88,7 +101,7 @@ In the DNA test class:
         self.assertTrue(params["url"].endswith("&page=2"))
 ```
 
-- [ ] **Step 2: Run, see both fail**
+- [x] **Step 2: Run, see both fail**
 
 ```bash
 ./manage pyenv.cmd python -m nose2 -v -s tests/unit tests.unit.test_engine_sii tests.unit.test_engine_dnarynkow
@@ -96,7 +109,7 @@ In the DNA test class:
 
 Expected: the two new tests FAIL with `search=AT&T` in the URL.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `sii.py` — add `from urllib.parse import urlencode` and:
 
@@ -112,9 +125,9 @@ def request(query, params):
     params["url"] = f"{base_url}/spolki/?" + urlencode({"search": query, "page": page})
 ```
 
-- [ ] **Step 4: Run, see all pass** (same command). The existing `test_request_uses_search_not_q` must still pass.
+- [x] **Step 4: Run, see all pass** (same command). The existing `test_request_uses_search_not_q` must still pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add searx/engines/sii.py searx/engines/dnarynkow.py tests/unit/test_engine_sii.py tests/unit/test_engine_dnarynkow.py
@@ -129,7 +142,7 @@ git commit -m "Encode the query in the sii and dna rynkow request URLs"
 - Modify: `searx/engines/sii.py` (`response`, new `_fold`, `_terms`)
 - Test: `tests/unit/test_engine_sii.py`
 
-- [ ] **Step 1: Give the test response a query**
+- [x] **Step 1: Give the test response a query**
 
 `resp.search_params["query"]` is what the engine will read (the online processor sets it; `open_meteo.py`, `dictzone.py` read it the same way). Change the helper so every existing test carries a query its fixtures match:
 
@@ -144,7 +157,7 @@ def _resp(text, status_code=200, query="orlen"):
 
 Run the module once: everything still passes (no behaviour change yet).
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 ```python
     # -- relevance: the site ORs terms -------------------------------------
@@ -183,7 +196,7 @@ Run the module once: everything still passes (no behaviour change yet).
         self.assertEqual(len(self.engine.response(_resp(COMMENT_BLOCK, query=""))), 1)
 ```
 
-- [ ] **Step 3: Run, see them fail**
+- [x] **Step 3: Run, see them fail**
 
 ```bash
 ./manage pyenv.cmd python -m nose2 -v -s tests/unit tests.unit.test_engine_sii
@@ -191,7 +204,7 @@ Run the module once: everything still passes (no behaviour change yet).
 
 Expected FAIL: `test_one_matching_word_of_two_is_not_a_match` (1 != 0), `test_a_single_absent_term_is_not_a_match` (1 != 0). The positive controls pass already — that is correct and is why they exist.
 
-- [ ] **Step 4: Implement**
+- [x] **Step 4: Implement**
 
 ```python
 import unicodedata
@@ -223,7 +236,7 @@ In `response()`, before the loop: `terms = _terms(resp.search_params.get("query"
 
 Add an `.. attention::` paragraph to the module docstring with the measurement table from the spec.
 
-- [ ] **Step 5: Run the module, then the engine lint and type gates**
+- [x] **Step 5: Run the module, then the engine lint and type gates**
 
 ```bash
 ./manage pyenv.cmd python -m nose2 -v -s tests/unit tests.unit.test_engine_sii
@@ -232,9 +245,9 @@ make test.pylint test.black test.pyright_modified
 
 Expected: all pass.
 
-- [ ] **Step 6: Mutation check** — replace `any(` with `all(` in the guard, rerun the module, confirm `test_one_matching_word_of_two_is_not_a_match` fails; restore.
+- [x] **Step 6: Mutation check** — replace `any(` with `all(` in the guard, rerun the module, confirm `test_one_matching_word_of_two_is_not_a_match` fails; restore.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add searx/engines/sii.py tests/unit/test_engine_sii.py
@@ -247,7 +260,7 @@ git commit -m "Drop sii rows that do not contain every query term"
 
 **Files:** none changed.
 
-- [ ] **Step 1: Restart and confirm the container serves the new code**
+- [x] **Step 1: Restart and confirm the container serves the new code**
 
 ```bash
 docker restart searxng-core
@@ -255,7 +268,7 @@ docker exec searxng-core grep -c '_fold' /usr/local/searxng/searx/engines/sii.py
 docker exec searxng-core grep -c 'urlencode' /usr/local/searxng/searx/engines/dnarynkow.py  # expect >= 1
 ```
 
-- [ ] **Step 2: Live controls (spaced for the rate limit)**
+- [x] **Step 2: Live controls (spaced for the rate limit)**
 
 ```bash
 SX=http://192.168.1.100:8888
@@ -269,7 +282,7 @@ done
 
 Expected: `zzqxv term` → `[0,[]]`; `orlen` and `cd projekt` → `[N>0,[]]`, every title/content containing both words for `cd projekt`.
 
-- [ ] **Step 3: General search no longer carries unrelated sii rows**
+- [x] **Step 3: General search no longer carries unrelated sii rows**
 
 ```bash
 curl -sG $SX/search --data-urlencode q='ECB interest rate' --data-urlencode format=json \
@@ -285,9 +298,9 @@ Expected: `0` (was 10 on 2026-10-15). No commit.
 **Files:**
 - Modify: `container/core-config/settings.yml` (the news block)
 
-- [ ] **Step 1: Record the failing state** — Task 0 Step 2's first command prints `0` / `[]`.
+- [x] **Step 1: Record the failing state** — Task 0 Step 2's first command prints `0` / `[]`.
 
-- [ ] **Step 2: Edit the news block**
+- [x] **Step 2: Edit the news block**
 
 ```yaml
   # News: duckduckgo news, wikinews (default on), qwant news and bing news answer.
@@ -310,7 +323,7 @@ Expected: `0` (was 10 on 2026-10-15). No commit.
     disabled: true
 ```
 
-- [ ] **Step 3: Lint, restart, verify**
+- [x] **Step 3: Lint, restart, verify**
 
 ```bash
 make test.yamllint
@@ -321,7 +334,7 @@ curl -sG http://192.168.1.100:8888/search --data-urlencode q='ECB interest rate'
 
 Expected: a positive count, engines `["bing news"]`.
 
-- [ ] **Step 4: Check Firecrawl still uses this instance** (it inherits the enabled set):
+- [x] **Step 4: Check Firecrawl still uses this instance** (it inherits the enabled set):
 
 ```bash
 docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' firecrawl-api-1 | grep SEARXNG
@@ -329,7 +342,7 @@ docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' firecrawl-api-1 | 
 
 Expected: `SEARXNG_ENDPOINT=http://192.168.1.100:8888`, `SEARXNG_NEWS_CATEGORIES=news`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add container/core-config/settings.yml
@@ -344,7 +357,7 @@ git commit -m "Enable bing news so a news time range runs an engine"
 - Modify: `skills/searxng/scripts/sxq`
 - Create: `skills/searxng/tests/test_sxq.py` (stdlib `unittest`, imports `sxq` via `importlib.machinery.SourceFileLoader` because the file has no `.py` suffix)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 import importlib.machinery, importlib.util, io, os, unittest
@@ -386,7 +399,7 @@ class Diagnostics(unittest.TestCase):
 
 Run: `python3 -m unittest discover -s skills/searxng/tests -v` — expect `AttributeError` on both functions.
 
-- [ ] **Step 2: Implement** beside `report_unresponsive`:
+- [x] **Step 2: Implement** beside `report_unresponsive`:
 
 ```python
 def report_foreign_engines(payload: dict, pinned: str) -> None:
@@ -412,7 +425,7 @@ def report_empty_time_range(payload: dict, time_range: str) -> None:
 
 Call both from `main()` after a search, guarded by `args.engines` / `args.time_range`.
 
-- [ ] **Step 3: Run the tests (pass), then the live checks**
+- [x] **Step 3: Run the tests (pass), then the live checks**
 
 ```bash
 python3 -m unittest discover -s skills/searxng/tests -v
@@ -420,15 +433,15 @@ skills/searxng/scripts/sxq test -e 'mojeek news' -n 1      # stderr names mwmbl/
 skills/searxng/scripts/sxq ECB -c news --time-range week -n 3  # results (after Task 4), no warning
 ```
 
-- [ ] **Step 4: Wire the tests into a target** — add `skill.test` to the `skill.*` group in `manage`/`Makefile` (next to `skill.check`, same skip-free behaviour: it needs only python3), and run it from `.github/workflows/skills.yml`.
+- [x] **Step 4: Wire the tests into a target** — add `skill.test` to the `skill.*` group in `manage`/`Makefile` (next to `skill.check`, same skip-free behaviour: it needs only python3), and run it from `.github/workflows/skills.yml`.
 
-- [ ] **Step 5: Sync and validate the skill**
+- [x] **Step 5: Sync and validate the skill**
 
 ```bash
 make skill.sync && make skill.check && make skill.validate
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add skills/searxng manage Makefile .github/workflows/skills.yml
@@ -442,7 +455,7 @@ git commit -m "Warn in sxq when a pin or a time range silently changes the searc
 **Files:**
 - Modify: `postman/searxng-integration-test.postman_collection.json`
 
-- [ ] **Step 1: Add requests** in the `Fork engine: sii (sii.org.pl)` folder and the news folder:
+- [x] **Step 1: Add requests** in the `Fork engine: sii (sii.org.pl)` folder and the news folder:
 
 | Request | Query | Test script asserts |
 |---|---|---|
@@ -451,11 +464,11 @@ git commit -m "Warn in sxq when a pin or a time range silently changes the searc
 
 Tighten `SII: multi-word company name (cd projekt)`: every result's `title + content`, lower-cased, contains `cd` and `projekt`.
 
-- [ ] **Step 2: Run** `./postman/run.sh --folder "Fork engine: sii (sii.org.pl)"` and the news folder. Expected: green (or the documented 429 outcome for SII bursts).
+- [x] **Step 2: Run** `./postman/run.sh --folder "Fork engine: sii (sii.org.pl)"` and the news folder. Expected: green (or the documented 429 outcome for SII bursts).
 
-- [ ] **Step 3: Mutation check** — temporarily set `bing news` back to `disabled: true`, restart, run the news folder, confirm it fails; restore and restart.
+- [x] **Step 3: Mutation check** — temporarily set `bing news` back to `disabled: true`, restart, run the news folder, confirm it fails; restore and restart.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add postman/searxng-integration-test.postman_collection.json
@@ -469,10 +482,10 @@ git commit -m "Add Postman controls for sii term matching and news time ranges"
 **Files:**
 - Modify: `DESIGN.md` (Local deployment), `skills/searxng/SKILL.md`, `skills/searxng/references/categories.md`
 
-- [ ] **Step 1:** `DESIGN.md` — under Local deployment, add: the `sii` all-terms filter and why; that `bing news` is the only time-range-capable news engine and what a block looks like; that pinning an unloaded engine falls back silently and `sxq` now says so.
-- [ ] **Step 2:** `SKILL.md` — replace "`--time-range` with `-c news` returns zero, silently" with the new behaviour (works through `bing news`; `sxq` warns when it does not). Add: "a `sii` hit contains every query term in its title or teaser".
-- [ ] **Step 3:** `make skill.sync && make skill.check && make skill.validate && make test.rst`
-- [ ] **Step 4: Commit**
+- [x] **Step 1:** `DESIGN.md` — under Local deployment, add: the `sii` all-terms filter and why; that `bing news` is the only time-range-capable news engine and what a block looks like; that pinning an unloaded engine falls back silently and `sxq` now says so.
+- [x] **Step 2:** `SKILL.md` — replace "`--time-range` with `-c news` returns zero, silently" with the new behaviour (works through `bing news`; `sxq` warns when it does not). Add: "a `sii` hit contains every query term in its title or teaser".
+- [x] **Step 3:** `make skill.sync && make skill.check && make skill.validate && make test.rst`
+- [x] **Step 4: Commit**
 
 ```bash
 git add DESIGN.md skills/searxng
@@ -483,7 +496,7 @@ git commit -m "Document sii term matching and the news time-range engine"
 
 ### Task 8: Full verification
 
-- [ ] `make test` — green (yamllint, black, pyright_modified, pylint, unit, robot, rst, shell, shfmt).
-- [ ] `./postman/run.sh` — green, SII 429 accepted as documented.
-- [ ] `git log --oneline -8` shows one commit per task 1, 2, 4, 5, 6, 7, and nothing else.
-- [ ] Notify the portfolio board: `idea.md` (Idea 4) "Found while probing: `sii`…" can cite the commit that fixed it; the lane's own guard stays (defence in depth).
+- [ ] `make test` — green (yamllint, black, pyright_modified, pylint, unit, robot, rst, shell, shfmt). — **partly done, not ticked.** yamllint, black, pyright_modified, pylint, unit, rst and shfmt are green. `test.robot` fails with `binary is not a Firefox executable` (`/usr/bin/firefox` is a shell wrapper on this host) and fails identically at the pre-plan commit, so it is environmental; `test.shell` cannot run at all because `shellcheck` is not installed here. Neither is a defect this plan introduced or can fix.
+- [x] `./postman/run.sh` — green, SII 429 accepted as documented.
+- [ ] `git log --oneline -8` shows one commit per task 1, 2, 4, 5, 6, 7, and nothing else. — **done with four extra commits, so not ticked.** One per task as specified, plus: two carry the Task 0 re-measurement into the spec and the `enable_http3` finding into D5; one brings the fork's own files back under black/pylint, which were already red before this plan started; one ends two test-settings files with a newline, which yamllint already rejected.
+- [ ] Notify the portfolio board: `idea.md` (Idea 4) "Found while probing: `sii`…" can cite the commit that fixed it; the lane's own guard stays (defence in depth). — **not done: still open.** This is the one item left. It acts on `/opt/projects/portfolio`, not this repo, so it is not something the implementation here can carry out.
