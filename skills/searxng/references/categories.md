@@ -68,7 +68,8 @@ does not exist. Check `.unresponsive_engines` before concluding anything.
 Captured in the same run, and **not** verified individually — these are single observations:
 
 - `yahoo` in `general` — **but it re-tested clean 3/3 when pinned.** Transient.
-- `gitlab` in `repos` — reproduced across three queries earlier
+- `gitlab` in `repos` — reproduced across three queries earlier. **Since disabled** (2026-10-15),
+  so this is history, not something you can reproduce by querying.
 - `wttr.in` — in both `weather` and `other`
 - 4 of 6 image engines: `bing images`, `brave.images`, `duckduckgo images`, `google cse images`
 - 4 of 9 video engines: `bing videos`, `brave.videos`, `google videos`, `vimeo`
@@ -86,7 +87,9 @@ property.
   both still return results — a query falls back rather than coming back empty.
   `/config` does not predict what a category returns.
 - **`map`** is the published name, not `maps`.
-- **`repos`** shows two engines; `gitlab` fails, so in practice it is GitHub alone.
+- **`repos`** shows two enabled engines — `github` and `huggingface`. `gitlab` was observed
+  failing earlier and has since been **disabled**, so it is not one of the two; do not re-enable
+  it on the strength of the old observation without re-probing.
 
 ## A suspension is not a block
 

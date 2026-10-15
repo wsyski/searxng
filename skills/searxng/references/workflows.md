@@ -1,7 +1,8 @@
 # Workflows
 
-Worked examples for what this instance is actually used for. Every command here has been run;
-the numbers are what came back on 2026-10-11.
+Worked examples for what this instance is actually used for. Every command here has been run. The
+numbers are what came back on **2026-10-11**, and the two that have been re-measured since carry
+their own date.
 
 ## Has any analyst office written about a name I hold?
 
@@ -53,8 +54,10 @@ The `github` engine finds **repositories**, and does not search code:
 
 Quote multi-word queries. `sxq react hooks` is two arguments and the second is rejected.
 
-`gitHub` aside, `gitlab`, `codeberg`, `gitea.com` and `sourcehut` are all disabled here, and
-`gitlab` returns `unexpected crash` when a category query reaches it.
+`gitlab`, `codeberg`, `gitea.com` and `sourcehut` are all **disabled** here, so a category query
+never reaches them. `categories.md` still lists `gitlab` under engines observed failing — that is a
+2026-10-11 observation from before it was switched off, not something you can reproduce. For code
+that is not on GitHub, check the engine's state in `/config` before assuming it was tried.
 
 ## A macro question, not a company
 
@@ -75,7 +78,7 @@ carry no price.
 
 ```bash
 sxq pydantic -c packages        # pypi, npm, pkg.go.dev, lib.rs, hoogle, docker hub
-sxq "pytest fixtures" -c it    # 17 engines, 148 results
+sxq "pytest fixtures" -c it    # 17 enabled engines, 151 results (2026-10-15; was 148)
 ```
 
 `metacpan` was failing in the sample run; the category still answers.
