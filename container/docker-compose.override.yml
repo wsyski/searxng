@@ -19,7 +19,7 @@ services:
       # container uid 977 to host 100976. FORCE_OWNERSHIP=false in ./.env is what
       # stops it. See DESIGN.md -> Local deployment for the recovery command.
       # Fork-local engines, single files rather than the whole engines directory
-      # so the image's other 253 engines stay untouched. The image is pinned, so
+      # so the image's other engines (2026.10.9-f4822b3fc) stay untouched. The image is pinned, so
       # anything in searx/engines/ is invisible to the container without this —
       # an engine that is written and registered but not mounted simply does not
       # appear in /config, and there is no error to tell you why.
