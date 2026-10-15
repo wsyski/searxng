@@ -40,10 +40,6 @@ sxq --health
 | `-n, --max-results` | Result count (default 10) |
 | `--page`, `--json`, `--health` | Paging, raw JSON, reachability |
 
-Both warnings above go to **stderr**, including under `--json`, so stdout stays a clean
-document and `sxq … --json | jq` keeps working. Do not silence stderr on a pinned or ranged
-query: it is the only place those two failures are visible.
-
 Quote multi-word queries: `sxq react hooks` is two arguments and the second is rejected.
 
 For fields `sxq` does not print (`answers`, `infoboxes`, `publishedDate`, raw `score`):
@@ -64,6 +60,11 @@ It is the single most consequential thing on this page.
 
 `Suspended: …` means the engine asked too fast, **not** that the site blocks this host —
 opposite diagnoses, and `references/categories.md` has the table.
+
+`sxq` writes two further diagnostics to **stderr**, including under `--json`, so stdout stays a
+clean document and `sxq … --json | jq` keeps working: one when results carry engines you did not
+pin, one when a `--time-range` came back empty with nothing failing. Both are described below. Do
+not silence stderr on a pinned or ranged query — it is the only place either failure is visible.
 
 ## Four behaviours that mislead
 
@@ -106,9 +107,13 @@ Read these when the query needs more than a list of results.
 - **`references/categories.md`** — every category on this instance with its engine count,
   which ones return nothing and why, and which engines were observed failing.
 
-## Finance news (outside SearXNG)
+## Per-ticker headlines (outside SearXNG)
 
-No finance engine here, and the Google News engine is blocked. Two feeds answer:
+`-c news --time-range` works now (above), but it searches *headlines*, not per-ticker feeds. For
+"what happened to NVDA today" these two RSS endpoints remain the direct route.
+
+Name collision worth stating once: SearXNG's `google news` **engine** is disabled here ("access
+denied"), which has nothing to do with the Google News **RSS** endpoint below, which answers.
 
 ```bash
 # Google News — `when:2d` limits to the last 2 days (also 1h, 7d)

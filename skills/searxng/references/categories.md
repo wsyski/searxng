@@ -3,7 +3,23 @@
 Measured 2026-10-11 against `192.168.1.100:8888`, SearXNG 2026.10.9. **Single sample per
 category** — see "How this was measured" before trusting a row.
 
-87 of 265 engines are enabled.
+**88 of 265 engines are enabled** (re-counted 2026-10-15; the 2026-10-11 figure was 87, before
+`bing news` was enabled — see "Changed since 2026-10-11" below).
+
+## Changed since 2026-10-11
+
+The matrix below is the 2026-10-11 sample and is left as measured, so the rows keep their
+provenance. These four were re-run on 2026-10-15 because the work that day could have moved them:
+
+| Category | Sample query | 2026-10-11 | 2026-10-15 | Why it moved |
+|---|---|---|---|---|
+| `news` | kghm | 52, four engines | **53**, five engines | `bing news` enabled; it is the only news engine with `time_range_support` |
+| `general` | liferay | 62 | **67** | upstream engine availability, not a config change |
+| `science` | crispr | 94 | **85** | as above — a sample, not a property |
+| `it` | pytest fixtures | 148 | **151** | as above |
+
+`sii` also changed behaviour rather than count: it now drops any row missing a query term, so it
+contributes fewer — and more relevant — rows to `general` than it did on 2026-10-11.
 
 ## What works
 
@@ -127,9 +143,11 @@ failure in `.unresponsive_engines` may be noise.
 
 ## A pinned engine that is not loaded runs the default search instead
 
+Measurements; `SKILL.md` carries the behaviour guidance.
+
 `engines=mojeek news` — an engine name this instance has never heard of — does **not** return an
-error. It returns 96 results from `mwmbl`, `duckduckgo web` and `sii`, because SearXNG drops the
-unknown name from the selection and falls back to the default categories. Measured 2026-10-15:
+error. It returns results from engines nobody asked for, because SearXNG drops the unknown name
+from the selection and falls back to the default categories. Measured 2026-10-15:
 
 | `engines=` | Results | Attributed to |
 |---|---|---|
@@ -137,12 +155,12 @@ unknown name from the selection and falls back to the default categories. Measur
 | `startpage news` (inactive upstream) | 97 | the same set plus `yahoo` |
 | `bing news` | 10 | `bing news` 10 |
 
-Nothing in the response says the pin was ignored, so a caller who pins one engine and counts
-results gets somebody else's. `sxq` now compares the `engines` on each result against the pin and
-warns on stderr when they differ; `sxq --health` reports the engine count if the name may be
-misspelt. This is upstream behaviour and is not worked around here.
+Nothing in the response says the pin was ignored. `sxq` compares the `engines` on each result
+against the pin and warns on stderr when they differ, including under `--json`.
 
 ## `--time-range` needs an engine that supports it
+
+Measurements; `SKILL.md` carries the behaviour guidance.
 
 SearXNG **drops** every engine whose `time_range_support` is False when a range is set. In `news`
 that was all four of them — `duckduckgo news`, `qwant news`, `wikinews`, `sii` — so `-c news
