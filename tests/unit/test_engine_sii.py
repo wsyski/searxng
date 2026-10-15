@@ -14,6 +14,7 @@ anything else. The two that matter most:
 """
 
 from datetime import datetime
+from typing import Any, cast
 from unittest.mock import Mock
 
 import searx.engines
@@ -23,7 +24,39 @@ from searx.exceptions import (
     SearxEngineResponseException,
     SearxEngineTooManyRequestsException,
 )
+from searx.result_types import LegacyResult
+from searx.search.processors import OnlineParamTypes
 from tests import SearxTestCase
+
+
+def _first(results):
+    """The first row, narrowed to what this engine actually builds.
+
+    ``EngineResults`` yields the base ``Result`` type, whose fields are the
+    engine-agnostic ones; ``content``, ``publishedDate`` and friends belong to
+    ``LegacyResult``, which is what ``sii.response`` adds. Narrowing once here
+    keeps every assertion below reading as an assertion.
+    """
+    return cast(LegacyResult, results[0])
+
+
+def _params(**extra: Any) -> OnlineParamTypes:
+    """A request-params dict as the online processor builds it.
+
+    ``OnlineParams`` is a TypedDict in which every key is required, so a test
+    that only supplies ``headers`` cannot satisfy it directly; the cast says the
+    narrowing once instead of at each of the four request tests.
+    """
+    base: dict[str, Any] = {"headers": {}}
+    base.update(extra)
+    return cast(OnlineParamTypes, cast(object, base))
+
+
+def _url(params: OnlineParamTypes) -> str:
+    """The URL ``request()`` built. ``HTTPParams.url`` is optional, so every
+    request test would otherwise have to repeat the narrowing."""
+    return params.get("url") or ""
+
 
 # A result block in the site's "comment" variant: the date/author line is
 # <p class="above metas"> — TWO classes on one element — and the summary is
@@ -61,15 +94,17 @@ AD_AND_AUTHOR = """
 <a href="https://www.sii.org.pl/autor/janusz-grabowski.html">Janusz Grabowski</a>
 """
 
-EMPTY_SHELL = (
-    "<html><body><div class='wrapup'></div></body></html>"  # 5.4 kB, 0 results
-)
+EMPTY_SHELL = "<html><body><div class='wrapup'></div></body></html>"  # 5.4 kB, 0 results
 
 
-def _resp(text, status_code=200):
+def _resp(text, status_code=200, query="orlen"):
     r = Mock()
     r.text = text
     r.status_code = status_code
+    # `query` is what the engine's relevance filter reads. It is set here
+    # because the online processor sets it (searx/search/processors/online.py),
+    # and both open_meteo.py and dictzone.py read it the same way.
+    r.search_params = {"query": query}
     return r
 
 
@@ -84,26 +119,26 @@ class SiiEngineTests(SearxTestCase):
     # -- the query parameter -------------------------------------------------
 
     def test_request_uses_search_not_q(self):
-        params = {"headers": {}}
+        params = _params()
         self.engine.request("orlen", params)
-        self.assertIn("search=orlen", params["url"])
-        self.assertNotIn("?q=", params["url"])
-        self.assertNotIn("&q=", params["url"])
+        self.assertIn("search=orlen", _url(params))
+        self.assertNotIn("?q=", _url(params))
+        self.assertNotIn("&q=", _url(params))
 
     def test_request_opts_out_of_raise_for_httperror(self):
         """Without this a zero-hit query is a 404 and looks like a dead engine."""
-        params = {"headers": {}}
+        params = _params()
         self.engine.request("nothing", params)
         self.assertFalse(params["raise_for_httperror"])
 
     def test_request_encodes_reserved_characters(self):
         """A raw f-string turned `AT&T` into search=AT plus a stray `T` parameter."""
-        params = {"headers": {}}
+        params = _params()
         self.engine.request("AT&T C#", params)
-        self.assertIn("search=AT%26T+C%23", params["url"])
+        self.assertIn("search=AT%26T+C%23", _url(params))
 
     def test_request_identifies_as_searxng(self):
-        params = {"headers": {}}
+        params = _params()
         self.engine.request("orlen", params)
         self.assertEqual(params["headers"]["User-Agent"], "SearXNG/1.0")
 
@@ -139,9 +174,7 @@ class SiiEngineTests(SearxTestCase):
         """webutils maps exception class names to user-facing text; an unmapped
         class falls back to "unexpected crash", which is what the first version
         of this engine produced."""
-        label = webutils.exception_classname_to_text.get(
-            "searx.exceptions.SearxEngineTooManyRequestsException"
-        )
+        label = webutils.exception_classname_to_text.get("searx.exceptions.SearxEngineTooManyRequestsException")
         self.assertIsNotNone(label)
         self.assertNotEqual(label, "unexpected crash")
 
@@ -154,29 +187,27 @@ class SiiEngineTests(SearxTestCase):
         for block in (COMMENT_BLOCK, NEWS_BLOCK):
             results = self.engine.response(_resp(block))
             self.assertEqual(len(results), 1, block[:60])
-            self.assertTrue(
-                results[0].content.strip(), f"no summary parsed from {block[:60]}"
-            )
+            self.assertTrue(_first(results).content.strip(), f"no summary parsed from {block[:60]}")
 
     def test_the_date_line_is_never_the_summary(self):
         """One variant writes it as class="above metas" — two classes, one element."""
         results = self.engine.response(_resp(COMMENT_BLOCK))
-        self.assertNotIn("09.10.2026", results[0].content)
-        self.assertNotIn("Janusz", results[0].content)
+        self.assertNotIn("09.10.2026", _first(results).content)
+        self.assertNotIn("Janusz", _first(results).content)
 
     def test_the_more_link_is_stripped(self):
         results = self.engine.response(_resp(COMMENT_BLOCK))
-        self.assertNotIn("Zobacz", results[0].content)
+        self.assertNotIn("Zobacz", _first(results).content)
 
     def test_the_date_is_parsed(self):
         results = self.engine.response(_resp(COMMENT_BLOCK))
-        self.assertEqual(results[0].publishedDate, datetime(2026, 10, 9))
+        self.assertEqual(_first(results).publishedDate, datetime(2026, 10, 9))
 
     def test_an_impossible_date_is_dropped_not_raised(self):
         block = COMMENT_BLOCK.replace("09.10.2026", "31.02.2026")
         results = self.engine.response(_resp(block))
         self.assertEqual(len(results), 1)
-        self.assertIsNone(results[0].publishedDate)
+        self.assertIsNone(_first(results).publishedDate)
 
     def test_adverts_are_not_results(self):
         self.assertEqual(len(self.engine.response(_resp(AD_AND_AUTHOR))), 0)
@@ -189,8 +220,47 @@ class SiiEngineTests(SearxTestCase):
         results = self.engine.response(_resp(COMMENT_BLOCK + NEWS_BLOCK))
         self.assertEqual(len(results), 2)
         for r in results:
-            self.assertTrue(r.content.strip())
-            self.assertNotIn("&nbsp;", r.content)
+            row = cast(LegacyResult, r)
+            self.assertTrue(row.content.strip())
+            self.assertNotIn("&nbsp;", row.content)
+
+    # -- relevance: the site ORs terms -------------------------------------
+
+    # The SAME block, retitled so it carries a query of two real words. The
+    # negative and the positive control below differ in the query only, which is
+    # what stops the filter from passing vacuously.
+    TERM_BLOCK = COMMENT_BLOCK.replace("Spółka tygodnia: ORLEN", "Termin walnego zgromadzenia")
+
+    def test_one_matching_word_of_two_is_not_a_match(self):
+        """Measured 2026-10-15: `zzqxv term` returned the same ten rows as `term`."""
+        results = self.engine.response(_resp(self.TERM_BLOCK, query="zzqxv term"))
+        self.assertEqual(len(results), 0)
+
+    def test_the_same_block_matches_when_every_term_is_present(self):
+        """The control for the test above - same block, different query."""
+        results = self.engine.response(_resp(self.TERM_BLOCK, query="termin walnego"))
+        self.assertEqual(len(results), 1)
+
+    def test_terms_match_across_title_and_teaser(self):
+        # "orlen" in the title, "korekta" only in the teaser
+        results = self.engine.response(_resp(COMMENT_BLOCK, query="orlen korekta"))
+        self.assertEqual(len(results), 1)
+
+    def test_matching_ignores_case_and_polish_diacritics(self):
+        for q in ("SPOLKA tygodnia", "spółka TYGODNIA", "Spolka Tygodnia"):
+            self.assertEqual(len(self.engine.response(_resp(COMMENT_BLOCK, query=q))), 1, q)
+
+    def test_l_with_stroke_folds_to_l(self):
+        """NFKD leaves Ł alone; the portfolio repo paid for that once (ISIN_MAP test)."""
+        block = COMMENT_BLOCK.replace("Spółka tygodnia: ORLEN", "Złoto i miedź")
+        self.assertEqual(len(self.engine.response(_resp(block, query="zloto"))), 1)
+
+    def test_a_single_absent_term_is_not_a_match(self):
+        self.assertEqual(len(self.engine.response(_resp(COMMENT_BLOCK, query="kghm"))), 0)
+
+    def test_an_empty_query_keeps_rows(self):
+        """No terms, nothing to require - do not turn a parsing test into a filter test."""
+        self.assertEqual(len(self.engine.response(_resp(COMMENT_BLOCK, query=""))), 1)
 
     def test_paging_is_disabled(self):
         """strona=2 returns byte-identical output, so offering it would break."""

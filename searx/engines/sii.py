@@ -55,6 +55,33 @@ The site has a plain server-rendered search page::
    ``/weryfikacja/``, ``/images/`` and ``/scripts/``, none of which this
    engine touches.
 
+.. attention::
+
+   **The site ORs the terms and matches fragments, so `response()` filters.**
+   Measured on the live site from the host, 2026-10-15, one ``/szukaj`` page
+   each (the count of ``class="newsabout"`` blocks):
+
+   ====================  =======
+   ``?search=``          results
+   ====================  =======
+   ``zzqxv``             0 (404)
+   ``zzqxv+term``        10
+   ``term``              10
+   ====================  =======
+
+   ``zzqxv term`` and ``term`` return the *same* ten rows — the site keeps
+   whichever term matched, so a nonsense word costs nothing. Through this engine
+   that put ten unrelated rows into every default search: ``sii`` is in
+   ``general``, so on ``q=ECB interest rate`` it contributed 10 of 96 results.
+   Because the OR happens server-side it cannot be fixed by the query; the only
+   place that sees both the query (``resp.search_params["query"]``) and the row
+   is ``response()``, which therefore keeps a row only when **every** query term
+   appears in its title or teaser, compared case- and diacritic-insensitively.
+
+   The accepted cost is a missed hit whose title and teaser use a synonym or
+   abbreviation of a query term (``PKN`` for ``Orlen``). A gap is visible; a
+   false hit reads as coverage, which is the worse failure.
+
 The result markup carries one ``<div class="newsabout">`` per hit, holding an
 ``<h3>`` anchor (title and URL), a date and author line, and a teaser
 paragraph. Adverts are interleaved as ``click.php?rid=...`` links inside
@@ -100,9 +127,7 @@ headers = {"User-Agent": "SearXNG/1.0"}
 
 # One result block. Split on the wrapper class rather than trying to walk the
 # surrounding ad furniture, which also contains anchors.
-_BLOCK_RE = re.compile(
-    r'class="newsabout".*?(?=class="newsabout"|<div class="right page"|$)', re.S
-)
+_BLOCK_RE = re.compile(r'class="newsabout".*?(?=class="newsabout"|<div class="right page"|$)', re.S)
 
 # An article URL is /<id>/<section>/<slug>.html. The id is what separates a
 # result from an advert (click.php?rid=) or an author page (/autor/x.html).
@@ -118,6 +143,20 @@ _DATE_RE = re.compile(r'class="calendar"></span>\s*(\d{2})\.(\d{2})\.(\d{4})')
 # Matching one class name silently emptied the summary for the other variant.
 _P_RE = re.compile(r'<p class="([^"]*)"[^>]*>(.*?)</p>', re.S)
 _META_CLASS = "metas"
+
+# NFKD decomposes ó/ś/ż into base + combining mark, but Ł/ł is a letter of its own
+# and survives untouched - so without this table "złoto" never matches "zloto".
+_FOLD_EXTRA = str.maketrans({"ł": "l", "Ł": "l"})
+
+
+def _fold(text):
+    text = (text or "").translate(_FOLD_EXTRA)
+    text = unicodedata.normalize("NFKD", text)
+    return "".join(c for c in text if not unicodedata.combining(c)).casefold()
+
+
+def _terms(query):
+    return [t for t in _fold(query).split() if t]
 
 
 def request(query, params):
@@ -148,19 +187,16 @@ def response(resp) -> EngineResults:
     # The dedicated exception renders as "too many requests" and, more usefully,
     # suspends this engine for an hour so the burst is not repeated.
     if resp.status_code == 429:
-        raise SearxEngineTooManyRequestsException(
-            message="sii.org.pl returned 429 (rate limited)"
-        )
+        raise SearxEngineTooManyRequestsException(message="sii.org.pl returned 429 (rate limited)")
     # The site answers 403 to a degenerate or absent User-Agent, which is a
     # configuration fault on our side rather than a block on SearXNG.
     if resp.status_code == 403:
-        raise SearxEngineAccessDeniedException(
-            message="sii.org.pl returned 403 (user agent refused)"
-        )
+        raise SearxEngineAccessDeniedException(message="sii.org.pl returned 403 (user agent refused)")
     if resp.status_code != 200:
         raise SearxEngineResponseException(f"unexpected status {resp.status_code}")
 
     seen = set()
+    terms = _terms(resp.search_params.get("query", ""))
 
     for block in _BLOCK_RE.findall(resp.text):
         m = _TITLE_RE.search(block)
@@ -169,6 +205,16 @@ def response(resp) -> EngineResults:
         url, title = m.group(1), html_to_text(m.group(2)).strip()
         if not _ARTICLE_RE.match(url) or url in seen or not title:
             continue
+
+        content = html_to_text(_teaser(block))
+
+        haystack = _fold(title + " " + content)
+        # sii.org.pl ORs the terms and matches fragments, so a row is ours only
+        # if EVERY term is in what we can see of it. Measured 2026-10-15:
+        # `zzqxv term` returned the same ten rows as `term`. See the docstring.
+        if any(t not in haystack for t in terms):
+            continue
+
         seen.add(url)
 
         results.add(
@@ -176,7 +222,7 @@ def response(resp) -> EngineResults:
                 {
                     "url": url,
                     "title": title,
-                    "content": html_to_text(_teaser(block)),
+                    "content": content,
                     "publishedDate": _parse_date(block),
                 }
             )
