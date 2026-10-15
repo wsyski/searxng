@@ -18,11 +18,48 @@ the parameter is 1-based in effect even though 0 is accepted.
 """
 
 from datetime import datetime
+from typing import Any, cast
 from unittest.mock import Mock
 
 import searx.engines
 from searx.exceptions import SearxEngineResponseException
+from searx.result_types import LegacyResult
+from searx.search.processors import OnlineParamTypes
 from tests import SearxTestCase
+
+
+def _rows(results):
+    """Every row, narrowed to what this engine actually builds.
+
+    ``EngineResults`` yields the base ``Result`` type, whose fields are the
+    engine-agnostic ones; ``title``, ``content`` and ``publishedDate`` belong to
+    ``LegacyResult``, which is what ``dnarynkow.response`` adds. Narrowing once
+    here keeps the assertions below reading as assertions.
+    """
+    return [cast(LegacyResult, r) for r in results]
+
+
+def _first(results):
+    return _rows(results)[0]
+
+
+def _params(**extra: Any) -> OnlineParamTypes:
+    """A request-params dict as the online processor builds it.
+
+    ``OnlineParams`` is a TypedDict in which every key is required, so a test
+    that supplies only ``pageno`` cannot satisfy it directly; the cast says the
+    narrowing once instead of at each request test.
+    """
+    base: dict[str, Any] = {"headers": {}}
+    base.update(extra)
+    return cast(OnlineParamTypes, cast(object, base))
+
+
+def _url(params: OnlineParamTypes) -> str:
+    """The URL ``request()`` built. ``HTTPParams.url`` is optional, so every
+    request test would otherwise have to repeat the narrowing."""
+    return params.get("url") or ""
+
 
 # A real result card: name + ticker in the <h3>, the update line, two badges.
 CARD = (
@@ -77,27 +114,27 @@ class DnaRynkowEngineTests(SearxTestCase):
     # -- the query interface -------------------------------------------------
 
     def test_request_targets_the_stock_index_with_a_search_param(self):
-        params = {}
+        params = _params()
         self.engine.request("alibaba", params)
-        self.assertIn("/spolki/", params["url"])
-        self.assertIn("search=alibaba", params["url"])
+        self.assertIn("/spolki/", _url(params))
+        self.assertIn("search=alibaba", _url(params))
         # The whole point: this is a parameter, not a route. Nothing named
         # /szukaj or /search exists on this site.
-        self.assertNotIn("/szukaj", params["url"])
+        self.assertNotIn("/szukaj", _url(params))
 
     def test_request_carries_the_page_number(self):
-        params = {}
+        params = _params()
         self.engine.request("alibaba", params)
-        self.assertIn("page=1", params["url"])
-        params = {"pageno": 3}
+        self.assertIn("page=1", _url(params))
+        params = _params(pageno=3)
         self.engine.request("alibaba", params)
-        self.assertIn("page=3", params["url"])
+        self.assertIn("page=3", _url(params))
 
     def test_request_encodes_reserved_characters(self):
-        params = {"pageno": 2}
+        params = _params(pageno=2)
         self.engine.request("AT&T", params)
-        self.assertIn("search=AT%26T", params["url"])
-        self.assertTrue(params["url"].endswith("&page=2"))
+        self.assertIn("search=AT%26T", _url(params))
+        self.assertTrue(_url(params).endswith("&page=2"))
 
     def test_paging_is_enabled(self):
         self.assertTrue(self.engine.paging)
@@ -105,7 +142,7 @@ class DnaRynkowEngineTests(SearxTestCase):
     def test_no_user_agent_is_set(self):
         """This site serves every UA equally, including none, so the engine
         sets none — unlike SII, which rejects a degenerate UA."""
-        params = {"headers": {}}
+        params = _params()
         self.engine.request("alibaba", params)
         self.assertEqual(params["headers"], {})
 
@@ -119,14 +156,14 @@ class DnaRynkowEngineTests(SearxTestCase):
     def test_a_card_yields_its_url_title_and_ticker(self):
         results = self.engine.response(_resp(CARD))
         self.assertEqual(len(results), 1)
-        r = results[0]
+        r = _first(results)
         self.assertEqual(r.url, "https://dnarynkow.pl/spolki/alibaba/")
         self.assertIn("Alibaba Group", r.title)
         self.assertIn("BABA", r.title, "the ticker lives in a nested span")
 
     def test_the_polish_update_date_is_parsed(self):
         results = self.engine.response(_resp(CARD))
-        self.assertEqual(results[0].publishedDate, datetime(2026, 6, 25))
+        self.assertEqual(_first(results).publishedDate, datetime(2026, 6, 25))
 
     def test_every_polish_month_abbreviation_resolves(self):
         for abbr, month in [
@@ -145,18 +182,20 @@ class DnaRynkowEngineTests(SearxTestCase):
         ]:
             card = CARD.replace("25 cze 2026", f"25 {abbr} 2026")
             results = self.engine.response(_resp(card))
-            self.assertEqual(results[0].publishedDate.month, month, f"month {abbr}")
+            # The whole date, not just .month: it says the same thing and leaves
+            # nothing Optional to narrow.
+            self.assertEqual(_first(results).publishedDate, datetime(2026, month, 25), f"month {abbr}")
 
     def test_a_missing_update_date_is_not_a_failure(self):
         results = self.engine.response(_resp(CARD_NO_DATE))
         self.assertEqual(len(results), 1)
-        self.assertIsNone(results[0].publishedDate)
-        self.assertIn("KGHM", results[0].title)
+        self.assertIsNone(_first(results).publishedDate)
+        self.assertIn("KGHM", _first(results).title)
 
     def test_venue_and_currency_are_carried(self):
         results = self.engine.response(_resp(CARD))
-        self.assertIn("NYSE", results[0].content)
-        self.assertIn("USD", results[0].content)
+        self.assertIn("NYSE", _first(results).content)
+        self.assertIn("USD", _first(results).content)
 
     def test_an_empty_page_yields_nothing(self):
         self.assertEqual(len(self.engine.response(_resp(EMPTY_PAGE))), 0)
@@ -167,11 +206,12 @@ class DnaRynkowEngineTests(SearxTestCase):
     def test_two_cards_do_not_bleed_into_each_other(self):
         results = self.engine.response(_resp(CARD + CARD_NO_DATE))
         self.assertEqual(len(results), 2)
-        titles = " ".join(r.title for r in results)
+        rows = _rows(results)
+        titles = " ".join(r.title for r in rows)
         self.assertIn("Alibaba", titles)
         self.assertIn("KGHM", titles)
-        self.assertIsNotNone(results[0].publishedDate)
-        self.assertIsNone(results[1].publishedDate)
+        self.assertIsNotNone(rows[0].publishedDate)
+        self.assertIsNone(rows[1].publishedDate)
 
     def test_the_category_is_news(self):
         self.assertEqual(self.engine.categories, ["general"])
