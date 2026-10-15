@@ -80,8 +80,7 @@ base_url = "https://dnarynkow.pl"
 # the GROUP rather than the whole match, so every card arrived as a bare
 # "/spolki/<slug>/" with none of the text the parser then looks for.
 _ITEM_RE = re.compile(
-    r'<a href="(?P<url>/spolki/[a-z0-9-]+/)"[^>]*class="flex flex-col gap-3 flex-1'
-    r".*?</a>",
+    r'<a href="(?P<url>/spolki/[a-z0-9-]+/)"[^>]*class="flex flex-col gap-3 flex-1.*?</a>',
     re.S,
 )
 _H3_RE = re.compile(r"<h3[^>]*>(.*?)</h3>", re.S)

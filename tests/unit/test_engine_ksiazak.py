@@ -28,9 +28,7 @@ POST = {
     "link": "https://konradksiazak.pl/noctiluca-najlepsza-spolka-deep-tech-na-gieldzie/",
     "date": "2026-01-07T14:17:19",
     "title": {"rendered": "Noctiluca: Najlepsza sp&#243;&#322;ka deep-tech na GPW?"},
-    "excerpt": {
-        "rendered": "<p>Sp&oacute;ka Noctiluca, toru&#324;ski pionier w obszarze deep-tech.</p>\n"
-    },
+    "excerpt": {"rendered": "<p>Sp&oacute;ka Noctiluca, toru&#324;ski pionier w obszarze deep-tech.</p>\n"},
 }
 
 
@@ -81,9 +79,7 @@ class KsiazakEngineTests(SearxTestCase):
 
     def test_paging_past_the_end_is_empty_not_an_error(self):
         """WordPress answers 400 for page > total; that is the end of the list."""
-        results = self.engine.response(
-            _resp({"code": "rest_post_invalid_page_number"}, 400)
-        )
+        results = self.engine.response(_resp({"code": "rest_post_invalid_page_number"}, 400))
         self.assertEqual(len(results), 0)
 
     def test_other_error_statuses_still_raise(self):

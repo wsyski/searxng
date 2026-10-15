@@ -108,13 +108,23 @@ def _resp(text, status_code=200, query="orlen"):
     return r
 
 
-class SiiEngineTests(SearxTestCase):
+class _SiiEngineTestCase(SearxTestCase):
+    """One settings file and one engine lookup, shared by the three cases below.
+
+    Split rather than one class because pylint caps a class at 20 public methods
+    and this module pins more findings than that. The split follows the three
+    things that can break independently here: the request, the parser, and the
+    relevance filter.
+    """
 
     TEST_SETTINGS = "test_sii.yml"
 
     def setUp(self):
         super().setUp()
         self.engine = searx.engines.engines["sii"]
+
+
+class SiiRequestTests(_SiiEngineTestCase):
 
     # -- the query parameter -------------------------------------------------
 
@@ -178,6 +188,18 @@ class SiiEngineTests(SearxTestCase):
         self.assertIsNotNone(label)
         self.assertNotEqual(label, "unexpected crash")
 
+    # -- what the engine declares --------------------------------------------
+
+    def test_paging_is_disabled(self):
+        """strona=2 returns byte-identical output, so offering it would break."""
+        self.assertFalse(self.engine.paging)
+
+    def test_the_engine_is_news_only(self):
+        self.assertEqual(self.engine.categories, ["news", "general"])
+
+
+class SiiParsingTests(_SiiEngineTestCase):
+
     def test_an_empty_shell_parses_to_nothing(self):
         self.assertEqual(len(self.engine.response(_resp(EMPTY_SHELL))), 0)
 
@@ -224,6 +246,9 @@ class SiiEngineTests(SearxTestCase):
             self.assertTrue(row.content.strip())
             self.assertNotIn("&nbsp;", row.content)
 
+
+class SiiRelevanceTests(_SiiEngineTestCase):
+
     # -- relevance: the site ORs terms -------------------------------------
 
     # The SAME block, retitled so it carries a query of two real words. The
@@ -261,10 +286,3 @@ class SiiEngineTests(SearxTestCase):
     def test_an_empty_query_keeps_rows(self):
         """No terms, nothing to require - do not turn a parsing test into a filter test."""
         self.assertEqual(len(self.engine.response(_resp(COMMENT_BLOCK, query=""))), 1)
-
-    def test_paging_is_disabled(self):
-        """strona=2 returns byte-identical output, so offering it would break."""
-        self.assertFalse(self.engine.paging)
-
-    def test_the_engine_is_news_only(self):
-        self.assertEqual(self.engine.categories, ["news", "general"])

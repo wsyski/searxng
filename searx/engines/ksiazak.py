@@ -93,9 +93,7 @@ def response(resp) -> EngineResults:
                     # The excerpt, not the body: a 15 kB article in a search
                     # result is unreadable, and the excerpt is the office's own
                     # summary of its own thesis.
-                    "content": html_to_text(
-                        post.get("excerpt", {}).get("rendered", "")
-                    ).strip(),
+                    "content": html_to_text(post.get("excerpt", {}).get("rendered", "")).strip(),
                     "publishedDate": _date(post.get("date")),
                 }
             )
