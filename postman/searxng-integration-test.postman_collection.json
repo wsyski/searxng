@@ -177,56 +177,121 @@
     },
     {
       "name": "News category search",
-      "event": [
+      "item": [
         {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
-              "const body = pm.response.json();",
-              "pm.test('Response carries a results array', () => pm.expect(body.results).to.be.an('array'));",
-              "const news = body.results || [];",
-              "const dated = news.filter(r => r && r.publishedDate);",
-              "console.log(news.length + ' news result(s), ' + dated.length + ' with publishedDate');",
-              "pm.test('The news category answers', () => {",
-              "  pm.expect(news, 'no news results; check SEARXNG_NEWS_CATEGORIES against this instance (its categories must exist in /config)').to.have.length.above(0);",
-              "});",
-              "pm.test('Results carry publishedDate, which becomes `date` in Firecrawl', () => {",
-              "  pm.expect(dated, 'no news result had a publishedDate').to.have.length.above(0);",
-              "});"
-            ]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Response carries a results array', () => pm.expect(body.results).to.be.an('array'));",
+                  "const news = body.results || [];",
+                  "const dated = news.filter(r => r && r.publishedDate);",
+                  "console.log(news.length + ' news result(s), ' + dated.length + ' with publishedDate');",
+                  "pm.test('The news category answers', () => {",
+                  "  pm.expect(news, 'no news results; check SEARXNG_NEWS_CATEGORIES against this instance (its categories must exist in /config)').to.have.length.above(0);",
+                  "});",
+                  "pm.test('Results carry publishedDate, which becomes `date` in Firecrawl', () => {",
+                  "  pm.expect(dated, 'no news result had a publishedDate').to.have.length.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{searxngUrl}}/search",
+              "host": [
+                "{{searxngUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "bitcoin price"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                },
+                {
+                  "key": "categories",
+                  "value": "news"
+                }
+              ]
+            },
+            "description": "categories=news is the news half of the mapping: mappers.news renames content to snippet and publishedDate to date. Firecrawl sends SEARXNG_NEWS_CATEGORIES here (default news) and, per the comment in search/v2/searxng.ts, deliberately sends no engines pin - a pin like \"yahoo,mwmbl\" would leave the news category with no engine to run."
           }
-        }
-      ],
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{searxngUrl}}/search",
-          "host": [
-            "{{searxngUrl}}"
-          ],
-          "path": [
-            "search"
-          ],
-          "query": [
+        },
+        {
+          "name": "News with a time range runs an engine",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{searxngUrl}}/search?q=ECB%20interest%20rate&categories=news&time_range=week&format=json",
+              "host": [
+                "{{searxngUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "ECB interest rate"
+                },
+                {
+                  "key": "categories",
+                  "value": "news"
+                },
+                {
+                  "key": "time_range",
+                  "value": "week"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          },
+          "description": "The negative control for the second silent failure. duckduckgo news, qwant news, wikinews and sii all have time_range_support = False, and SearXNG DROPS an engine that does not support the range you asked for - so `-c news` with a time_range ran ZERO engines and came back with 0 results and an EMPTY unresponsive_engines. That reads as a healthy answer; it is an empty one.\n\nbing news is enabled in container/core-config/settings.yml and does support ranges. Note enable_http3: false next to it: bing_news.py requests HTTP/3, and UDP/443 is filtered on this host, which is what the old 'connection error' comment recorded. Verified 2026-10-15 after the change: 4 results, all attributed to bing news.\n\nDisabling bing news makes this request fail; that is the point of having it.",
+          "event": [
             {
-              "key": "q",
-              "value": "bitcoin price"
-            },
-            {
-              "key": "format",
-              "value": "json"
-            },
-            {
-              "key": "categories",
-              "value": "news"
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const rs = body.results || [];",
+                  "const bad = body.unresponsive_engines || [];",
+                  "console.log(rs.length + ' result(s), engines: ' + JSON.stringify([...new Set(rs.map(r => r.engine))])",
+                  "  + ', unresponsive: ' + JSON.stringify(bad));",
+                  "pm.test('A news time range returns something', () => {",
+                  "  // Every engine in this category that lacks time_range_support is dropped,",
+                  "  // so an empty result here means NO ENGINE RAN - not 'nothing was published'.",
+                  "  pm.expect(rs, 'empty with a time_range and no failing engine: no selected news engine supports time_range. Check bing news in container/core-config/settings.yml')",
+                  "    .to.have.length.above(0);",
+                  "});",
+                  "pm.test('The results come from the engine that supports ranges', () => {",
+                  "  const engines = [...new Set(rs.map(r => r.engine))];",
+                  "  pm.expect(engines, 'no engine attributed the results: ' + JSON.stringify(engines))",
+                  "    .to.include('bing news');",
+                  "});"
+                ]
+              }
             }
           ]
-        },
-        "description": "categories=news is the news half of the mapping: mappers.news renames content to snippet and publishedDate to date. Firecrawl sends SEARXNG_NEWS_CATEGORIES here (default news) and, per the comment in search/v2/searxng.ts, deliberately sends no engines pin - a pin like \"yahoo,mwmbl\" would leave the news category with no engine to run."
-      }
+        }
+      ]
     },
     {
       "name": "Images category search",
@@ -504,7 +569,7 @@
               ]
             }
           },
-          "description": "Proves the query reaches the site intact. The engine builds /szukaj?search=<terms>.\nA single-word query could pass by accident if the first term were being used alone;\n'cd projekt' is a real GPW name and only matches as a phrase.\n\nNote the two outcomes this request accepts. Measured 2026-10-11: sii.org.pl serves two\nsearches from a burst and answers 429 after that, and newman sends requests back to back with\nno pacing, so a throttle is expected on a full-collection run. The assertion requires that a\nthrottle is NAMED (unresponsive_engines carries 'too many requests'); an empty result with no\nreason attached still fails, because that is indistinguishable from a genuinely empty search.",
+          "description": "Proves the query reaches the site intact. The engine builds /szukaj?search=<terms>.\nA single-word query could pass by accident if the first term were being used alone;\n'cd projekt' is a real GPW name and only matches as a phrase.\n\nNote the two outcomes this request accepts. Measured 2026-10-11: sii.org.pl serves two\nsearches from a burst and answers 429 after that, and newman sends requests back to back with\nno pacing, so a throttle is expected on a full-collection run. The assertion requires that a\nthrottle is NAMED (unresponsive_engines carries 'too many requests'); an empty result with no\nreason attached still fails, because that is indistinguishable from a genuinely empty search.\n\nEvery result must carry BOTH words, in its title or its teaser: the site ORs the terms, so rows mentioning only one of them arrive here indistinguishable from matches.",
           "event": [
             {
               "listen": "test",
@@ -530,6 +595,17 @@
                   "  // an author (/autor/) or advert (click.php) link would not pass.",
                   "  const wrong = rs.filter(r => !r || !/^https:\\/\\/www\\.sii\\.org\\.pl\\/\\d+\\/[^?#]*\\.html$/.test(r.url || '')).map(r => (r||{}).url);",
                   "  pm.expect(wrong, 'not a sii article URL: ' + JSON.stringify(wrong.slice(0,3))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('Every result carries BOTH query words, in its title or its teaser', () => {",
+                  "  // The site's OR semantics mean `cd projekt` came back with rows that only ever",
+                  "  // mentioned one of the two words. They parse fine and look like results, which is",
+                  "  // the failure mode: a coverage pass reads one as an analyst writing about CD Projekt.",
+                  "  const missing = rs.filter(r => {",
+                  "    const hay = (((r || {}).title || '') + ' ' + ((r || {}).content || '')).toLowerCase();",
+                  "    return !(hay.indexOf('cd') !== -1 && hay.indexOf('projekt') !== -1);",
+                  "  }).map(r => (r || {}).url);",
+                  "  pm.expect(missing, 'rows missing one of the two query words: ' + JSON.stringify(missing.slice(0, 3)))",
+                  "    .to.have.lengthOf(0);",
                   "});",
                   "pm.test('Results carry a title and a summary', () => {",
                   "  const wrong = rs.filter(r => !r || !r.title || typeof r.content !== 'string').map(r => (r||{}).url);",
@@ -694,6 +770,65 @@
                   "pm.test('Dates are parsed datetimes', () => {",
                   "  const dated = rs.filter(r => r && r.publishedDate);",
                   "  pm.expect(dated, 'no result had a publishedDate').to.have.length.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SII: one matching word of two is not a match (zzqxv term)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{searxngUrl}}/search?q=zzqxv%20term&engines=sii&format=json",
+              "host": [
+                "{{searxngUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "zzqxv term"
+                },
+                {
+                  "key": "engines",
+                  "value": "sii"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          },
+          "description": "The negative control for sii's relevance filter, and the one this collection exists to keep. sii.org.pl ORs the terms and matches fragments, so `zzqxv term` returns the same ten rows as `term` - measured 2026-10-15 straight from the host: ?search=zzqxv gave 0 (a 404 body), ?search=zzqxv+term gave 10 and ?search=term gave 10. Because sii is in `general`, those ten unrelated rows also landed in every default search: on q=ECB interest rate they were 10 of 96 results, and therefore in Firecrawl's results too.\n\nsearx/engines/sii.py therefore keeps a row only when EVERY query term appears in its title or teaser, compared case- and diacritic-insensitively (with l/\\u0142 folded explicitly, which NFKD alone does not do). A regression that drops the filter makes this request return ten rows and go red.\n\nA throttle is the accepted second outcome, as for the other SII requests - see the next paragraph.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const rs = body.results || [];",
+                  "const bad = body.unresponsive_engines || [];",
+                  "console.log(rs.length + ' result(s), unresponsive: ' + JSON.stringify(bad));",
+                  "pm.test('A query whose terms are not all present returns nothing', () => {",
+                  "  // sii.org.pl ORs the terms, so the raw page carries ten rows here. The",
+                  "  // engine filters them; without the filter this request returns ten.",
+                  "  const throttled = bad.some(u => JSON.stringify(u).indexOf('too many requests') !== -1);",
+                  "  if (throttled) { console.log('   (throttled by sii.org.pl - accepted)'); return; }",
+                  "  pm.expect(rs, 'sii returned rows for `zzqxv term` - the site ORs the terms, so searx/engines/sii.py must drop rows missing a term').to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('No sii crash is reported', () => {",
+                  "  // The engine's exceptions are all legitimate; what must not appear is a",
+                  "  // generic 'unexpected crash', which is what the 429 handling used to give.",
+                  "  const crashed = bad.filter(u => JSON.stringify(u).toLowerCase().indexOf('unexpected crash') !== -1)",
+                  "    .map(u => (u || [])[0]);",
+                  "  pm.expect(crashed, 'an sii crash - check the engine status handling').to.have.lengthOf(0);",
                   "});"
                 ]
               }
