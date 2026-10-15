@@ -12,6 +12,12 @@ services:
       - ./.env
       - ./.env.prod
     volumes:
+      # core-config (settings.yml) is bind-mounted in docker-compose.yml, not
+      # here. If it ever comes back owned by an id the host user owns nothing by,
+      # the image entrypoint's `chown -R searxng:searxng` ran with
+      # FORCE_OWNERSHIP unset - its default is true - and rootless docker mapped
+      # container uid 977 to host 100976. FORCE_OWNERSHIP=false in ./.env is what
+      # stops it. See DESIGN.md -> Local deployment for the recovery command.
       # Fork-local engines, single files rather than the whole engines directory
       # so the image's other 253 engines stay untouched. The image is pinned, so
       # anything in searx/engines/ is invisible to the container without this —

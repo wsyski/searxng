@@ -338,8 +338,29 @@ changes to the base file do not conflict.
   `/etc/hermes/.env`. Harmless because the file is gitignored; noted so their
   presence is not mistaken for wiring.
 - `container/core-config/settings.yml` — bind-mounted over `/etc/searxng`.
-  Owned by the host user because `FORCE_OWNERSHIP=false`, so it can be edited
-  in place and applied with `docker restart searxng-core`.
+  Edit in place and apply with `docker restart searxng-core`.
+- **`core-config` can end up owned by an id the host user owns nothing by, and
+  it presents as a permissions bug.** Hit on 2026-10-15: the file was unwritable
+  and `stat` showed `100999 UNKNOWN`. The chain, each link verified:
+  - The image entrypoint runs `chown -R searxng:searxng` on `/etc/searxng`
+    whenever `FORCE_OWNERSHIP` is true — **which is the entrypoint's default**
+    (`${FORCE_OWNERSHIP:-true}` in `container/entrypoint.sh`).
+  - Docker here is **rootless**, so a container uid does not mean the host uid.
+    Measured by `chown`ing a probe file and re-`stat`ing it on the host:
+    container `0` → host `1000` (the invoking user), container `976` → `100975`,
+    `977` → **`100976`**, `999` → `100998`.
+  - So a `chown` to the image's `searxng` (uid 977) lands on the host as
+    `100976`, which resolves to no host account, and the file becomes read-only
+    to the operator. `container/.env` sets `FORCE_OWNERSHIP=false`, so the
+    entrypoint only *warns* today — the chown is left over from an earlier run,
+    which is exactly why nothing about the current state explains it.
+  - **To hand it back**, without sudo (container uid 0 maps to the invoking
+    host user): `docker run --rm -v "$PWD/container/core-config:/mnt" alpine
+    chown 0:0 /mnt /mnt/settings.yml`. Check with `stat -c '%u %U'
+    container/core-config/settings.yml`.
+  - **Do not `chown 1000:1000` inside the container** to mean "me". It means
+    container uid 1000, which is host uid `100999` — a different wrong answer.
+    I did exactly that while diagnosing this and had to undo it.
 - **The container runs the pinned upstream image, not this repo's source.**
   Anything edited under `searx/` here is inert until it is bind-mounted in
   `docker-compose.override.yml`, and that failure is silent: the repo looks
