@@ -14,6 +14,8 @@ is **not** upstream and is easy to break by merging carelessly.
 - `./manage` is the build system; `make` is a thin wrapper over it. Never run
   `pip`, `black`, `pylint`, `nose2` or `sphinx` from a bare shell — the toolchain
   is the venv at `local/py3`. Use `./manage <task>` or `./manage pyenv.cmd <cmd>`.
+  The venv is on `PATH` **by absolute path**, so a resolved `python` does not
+  warn about `sys.prefix`; keep it that way if you touch `utils/lib.sh`.
 - Tests are **nose2**, not pytest. Single test:
   `./manage pyenv.cmd python -m nose2 -v -s tests/unit tests.unit.test_query`
   (dotted path only — see `DESIGN.md`, the bare form silently uses the wrong
@@ -46,5 +48,9 @@ is **not** upstream and is easy to break by merging carelessly.
   names the `claude-code` runtime rather than disabling the rule, because the skill's
   nested `metadata.hermes` is valid there and not under the generic spec.
   `.github/workflows/skills.yml` runs it and fails if it skipped. See `DESIGN.md`.
+- **The skill ships code, not only prose**: `skills/searxng/scripts/sxq`. Editing it
+  means `make skill.test` too — stdlib `unittest` over `skills/*/tests`, no venv
+  needed. It is deliberately *not* part of `make test`, for the same reason
+  `skill.check` is not: its verdict depends on state outside this repo.
 - Commits: present tense, imperative, ≤72-char subject. Open an issue before
   large architectural changes.

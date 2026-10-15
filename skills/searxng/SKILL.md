@@ -40,6 +40,10 @@ sxq --health
 | `-n, --max-results` | Result count (default 10) |
 | `--page`, `--json`, `--health` | Paging, raw JSON, reachability |
 
+Both warnings above go to **stderr**, including under `--json`, so stdout stays a clean
+document and `sxq … --json | jq` keeps working. Do not silence stderr on a pinned or ranged
+query: it is the only place those two failures are visible.
+
 Quote multi-word queries: `sxq react hooks` is two arguments and the second is rejected.
 
 For fields `sxq` does not print (`answers`, `infoboxes`, `publishedDate`, raw `score`):
@@ -61,7 +65,7 @@ It is the single most consequential thing on this page.
 `Suspended: …` means the engine asked too fast, **not** that the site blocks this host —
 opposite diagnoses, and `references/categories.md` has the table.
 
-## Three behaviours that mislead
+## Four behaviours that mislead
 
 - **`--time-range` with `-c news` works, through `bing news`** — the only enabled news engine with
   `time_range_support`. The other four are *dropped* when a range is set, so before it was enabled
@@ -76,8 +80,12 @@ opposite diagnoses, and `references/categories.md` has the table.
   but a *miss* can still be a synonym (`PKN` for `Orlen`), so issue the ticker and the name. The
   engine logs `dropped N of M` at debug when it drops rows; an empty `sii` result is not proof
   that sii.org.pl has nothing.
-- **A pinned engine that is not loaded runs the default search** and says nothing. `sxq` warns on
-  stderr when results come from engines you did not pin; see `references/categories.md`.
+- **A pinned engine that is not loaded runs the default search, and the API
+  reports nothing wrong.** `engines=mojeek news` returns 96 rows from `mwmbl`,
+  `duckduckgo web` and `sii` — a caller who pins one engine and counts results
+  gets someone else's. The *response* is silent about it; `sxq` is what says so,
+  on stderr, whenever results carry engines you did not pin. See
+  `references/categories.md`.
 
 ## When to use this
 

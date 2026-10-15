@@ -2,7 +2,7 @@
 """Query the host's SearXNG instance and print a compact result list.
 
 Adapted from timeplus-io/AgentSkills `searxng-web-search/scripts/searxng_search.py`
-(MIT). Three deliberate differences, each forced by how this host actually runs:
+(MIT). Deliberate differences, each forced by how this host actually runs:
 
   * The env var is SEARXNG_URL, not that project's SEARXNG_BASE_URL. Nothing on
     this host sets the latter, so an unmodified copy silently falls through to its
@@ -15,7 +15,24 @@ Adapted from timeplus-io/AgentSkills `searxng-web-search/scripts/searxng_search.
     were blocked or rate-limited, which is a different conclusion and a
     different next action.
 
-Stdlib only. No third-party imports.
+Two further diagnostics were added because both of the failures they name are
+INVISIBLE in the output rather than absent from it:
+
+  * `report_foreign_engines` - SearXNG ignores an engine name it cannot load and
+    runs the default search instead, so a pinned query can return rows from
+    engines nobody asked for, and nothing in the response mentions it.
+  * `report_empty_time_range` - SearXNG drops every engine that does not declare
+    `time_range_support` when a range is set, so a query can run ZERO engines and
+    answer with an empty result and an empty `.unresponsive_engines`.
+
+Both write to stderr and neither changes the results, so `--json` output stays
+parseable - which is why they run before the --json return rather than after it.
+Both name a cause only when the response supports one: a pinned engine that
+matched nothing is reported as having matched nothing, not as not being loaded.
+
+Stdlib only. No third-party imports. `tests/test_sxq.py` (stdlib `unittest`,
+run by `make skill.test`) covers both the diagnostics and their wiring into
+`main()`, which is the part a direct call to the functions cannot check.
 """
 
 from __future__ import annotations

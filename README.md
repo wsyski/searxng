@@ -21,6 +21,23 @@ code is unmodified in intent; what follows is the delta.
 - `postman/run.sh` (newman) is the integration smoke test for a running
   instance; use it after any config or image change.
 
+## Two ways this instance answers, and looks fine
+
+Both were live defects on 2026-10-15 and both are fixed; they are written down
+because a *client* cannot tell the difference from a correct answer, and
+Firecrawl searches through this instance.
+
+- **A news query with a time range used to run zero engines.** Every engine in
+  `news` lacked `time_range_support`, and SearXNG *drops* those when a range is
+  set — so the answer was empty, with an empty `unresponsive_engines`. `bing
+  news` is now enabled and does support ranges. It carries `enable_http3: false`
+  in the settings, because `bing_news.py` asks for HTTP/3 and UDP/443 is filtered
+  on this egress: that, not bing, was the "connection error" recorded on 2026-10-10.
+- **Pinning an engine this instance does not have runs the default search.**
+  `engines=mojeek news` returned 96 rows from `mwmbl`, `duckduckgo web` and
+  `sii`. That is upstream behaviour and is not worked around here; the skill's
+  `sxq` detects it instead. `DESIGN.md` → Local deployment has the measurements.
+
 **This instance has no authentication.** It is published on the LAN address so
 LAN clients can reach it, which makes it an open search proxy. Keep it that way
 and no wider.
@@ -36,8 +53,8 @@ results cache and the preferences cookie, so losing it invalidates both.
 
 A new engine in `searx/engines/` is invisible to the container while the image
 is pinned. `docker-compose.override.yml` therefore bind-mounts the engine file
-itself — one file, not the `engines/` directory, so the image's other 253 stay
-untouched:
+itself — one file, not the `engines/` directory, so the image's other engines
+stay untouched:
 
 ```yaml
 - ../searx/engines/liferay_forum.py:/usr/local/searxng/searx/engines/liferay_forum.py:ro
@@ -47,10 +64,10 @@ Drop that line once the engine is upstream or the pin moves past it. Register th
 engine in `container/core-config/settings.yml`, where `use_default_settings:
 true` appends names it does not already know.
 
-`liferay forum` (module `searx/engines/liferay_forum.py`, shortcut `!lf`) is the
-only one so far. It queries the Discourse instance at `discuss.lifecycle.com`,
-whose `search.json` returns JSON over plain HTTP and whose robots.txt allows
-`User-agent: *`. Two behaviours to know before writing the next one:
+`liferay forum` (module `searx/engines/liferay_forum.py`, shortcut `!lf`)
+queries the Discourse instance at `discuss.lifecycle.com`, whose
+`search.json` returns JSON over plain HTTP and whose robots.txt allows
+`User-agent: *`. Three behaviours to know before writing the next one:
 
 - **Discourse rate-limits anonymous clients hard.** A burst earns a 180 s
   suspension, surfaced by SearXNG as `Suspended: too many requests` in
@@ -58,9 +75,27 @@ whose `search.json` returns JSON over plain HTTP and whose robots.txt allows
 - **A quoted query with no matches returns no `topics` key at all**, so the
   result is empty rather than an error. Discourse also ANDs the terms, so
   multi-word phrases often legitimately have no hits.
+- **`paging` is off**: `/search.json` accepts `page` but returns the same set for
+  page 0 and page 1.
 
-`paging` is off: `/search.json` accepts `page` but returns the same set for
-page 0 and page 1.
+The other three fork-local engines are finance sources, and the trap each one
+documents in its own module docstring is a *measurement*, so read that before
+changing anything:
+
+| Engine | Source | What bit us |
+|---|---|---|
+| `sii` (`!sii`) | sii.org.pl `/szukaj` | The parameter is `search`, **not `q`** — `?q=` answers 200 with one identical 62 kB page for every query including a nonsense one, so a wrong parameter reads as a healthy engine that found nothing. A zero-hit query is **404**, not an empty 200. And the site **ORs** the terms and matches fragments, so `zzqxv term` returned the same ten rows as `term`; the engine now keeps a row only when every query term appears in its title or teaser. |
+| `dna rynkow` (`!dna`) | dnarynkow.pl `/spolki/?search=` | No search *page* — only a parameter, so every path-shaped probe 404s while the search works. Results are server-rendered into the HTML body, not into the `__NUXT_DATA__` payload. |
+| `ksiazak` (`!ksz`) | konradksiazak.pl WordPress REST | `search` matches body text, so a hit does **not** mean the company is in the title. |
+
+Fifth mount is not fork-local: `github.py` is an **upstream** engine patched
+here to read the GitHub token from the environment. Without that mount the
+container keeps the image's copy and the patch is a silent no-op — the repo
+looks patched while nothing changed.
+
+`sii` and `dna rynkow` are rate-limit-prone (`sii` answers 429 after two or
+three searches in a burst and is then suspended for an hour). Keep Postman runs
+to the sii folder or space the requests out.
 
 ## Choosing what a client may ask for
 
