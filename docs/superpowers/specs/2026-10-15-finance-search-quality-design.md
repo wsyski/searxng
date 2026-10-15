@@ -48,6 +48,28 @@ runs, and an empty, error-free response comes back. The skill already documents 
 `reuters` still answers `HTTP error`. `mojeek news`, `startpage news` and `yahoo news` are
 `inactive` upstream (proof-of-work CAPTCHAs) and cannot be enabled.
 
+> **Re-measured from the host on 2026-10-15: the "connection error" is not bing being down.**
+> `bing news` fails here too, on every attempt, with `HTTP connection error`. The cause is the
+> transport, not the site. `bing_news.py` sets `enable_http3 = True`, which makes
+> `searx/network/client.py` ask for `CurlHttpVersion.V3` — QUIC. UDP/443 is filtered on this
+> egress. Measured from inside the container with `curl_cffi`:
+>
+> | `http_version` | result |
+> |---|---|
+> | `V3ONLY` | `ConnectionError (56) ngtcp2_conn_writev_stream ERR_DRAINING` |
+> | `V3` | the same error |
+> | `V2_0` | `200`, 16 110 bytes |
+> | `V1_1` | `200`, 16 110 bytes |
+>
+> So D5 needs one more thing: `enable_http3: false` on the `bing news` entry. That is still a
+> settings-only change — `searx/engines/__init__.py` `setattr`s every settings key onto the engine
+> module, and `searx/network/network.py` builds that engine's `Network` from the module attribute —
+> so no upstream engine file is patched and no new bind-mount is needed. After the change,
+> `-c news --time_range=week` returned **4 results, all `bing news`**.
+
+> Re-measured from the host on 2026-10-15, defect 1 confirmed by hand: `?search=zzqxv` gave 0
+> blocks (a 404 body), `?search=zzqxv+term` gave 10 and `?search=term` gave 10. The site ORs.
+
 ### 3. Pinning an engine that is not loaded silently runs the default search
 
 | `engines=` | Results | Attributed to |
@@ -69,7 +91,7 @@ carries its `engines`.
 | D2 | Single-term queries are filtered the same way | Consistent semantics; a one-word query whose word is absent from title and teaser was a fragment match. |
 | D3 | `sii` stays in `[news, general]` | Removing it from `general` would undo the reachability fix of `e5059452c`. With D1 it no longer injects unrelated rows. |
 | D4 | `sii` and `dnarynkow` build URLs with `urlencode` | Same as the two other fork engines. |
-| D5 | Enable `bing news` in `core-config/settings.yml`, with the probe date and numbers in the comment | The only loaded, answering news engine with `time_range_support`. Re-probe rule from the file's header applies. |
+| D5 | Enable `bing news` in `core-config/settings.yml`, with `enable_http3: false`, and the probe date and numbers in the comment | The only loaded news engine with `time_range_support`. The `enable_http3` key is the extra half added after re-measuring on 2026-10-15: HTTP/3 over QUIC is blocked on this egress, and that — not bing — was the "connection error". Re-probe rule from the file's header applies. |
 | D6 | `sxq` warns when (a) results come from engines that were not pinned, (b) a time range was set and the response is empty with no unresponsive engines | Both are silent failures the tool can name. It does not change results, only stderr. |
 | D7 | Postman gets a negative control per defect | `zzqxv term` on `sii` → 0; `-c news` + `time_range=week` → >0 and from `bing news`. The existing `SII: multi-word company name (cd projekt)` asserts every row contains both terms. |
 
