@@ -68,15 +68,14 @@ skill.test() {
     fi
     for dir in "${dirs[@]}"; do
         # Deliberately NOT ./manage pyenv.cmd: sxq is stdlib-only and must keep
-        # working on a host with no venv, so its tests have to as well. A failing
-        # suite returns immediately rather than being counted and summarised -
-        # a green step here has to mean the tests ran.
-        #
-        # The venv is dropped from PATH for the same reason. manage line 48 puts
-        # PY_ENV on PATH as a RELATIVE path ("local/py3/bin"), so python3
-        # resolves to the venv interpreter through a relative entry and CPython
-        # prints two "Unexpected value in sys.prefix" RuntimeWarnings on stderr -
-        # noise in a step whose green has to mean something ran.
+        # working on a host with no venv, so its tests have to as well. The venv
+        # is dropped from PATH for the same reason - the tests then run on the
+        # same interpreter sxq itself would use standalone, which is the one
+        # thing worth asserting about them. That also makes the step behave
+        # identically whether or not `make install` has run: the skills.yml job
+        # has no venv, this host does. A failing suite returns immediately
+        # rather than being counted and summarised - a green step here has to
+        # mean the tests ran.
         PATH="${PATH#"${PY_ENV_BIN}":}" python3 -m unittest discover -s "$dir" -v || return 1
     done
     build_msg TEST "[skill] unittest OK - ${#dirs[@]} suite(s)"

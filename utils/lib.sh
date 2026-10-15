@@ -550,7 +550,13 @@ service_is_available() {
 
 PY="${PY:=3}"
 PYTHON="${PYTHON:=python$PY}"
-PY_ENV="${PY_ENV:=local/py${PY}}"
+# Absolute, not "local/py${PY}". manage puts ${PY_ENV}/bin on PATH, and a RELATIVE
+# entry there makes any python resolved through it compute sys.prefix from a
+# relative path, which CPython rejects with two RuntimeWarnings on every
+# invocation ("Unexpected value in sys.prefix"). That is noise on every target,
+# and a step that emits it is a step nobody reads. PY_ENV_REQ already used
+# REPO_ROOT; this does too.
+PY_ENV="${PY_ENV:=${REPO_ROOT}/local/py${PY}}"
 PY_ENV_BIN="${PY_ENV}/bin"
 PY_ENV_REQ="${PY_ENV_REQ:=${REPO_ROOT}/requirements*.txt}"
 
