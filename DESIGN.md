@@ -437,7 +437,18 @@ changes to the base file do not conflict.
     resolves both binaries from PATH and passes them in, so the browser under
     test is the one on PATH rather than a second one found by another search.
   - The snap's `geckodriver` cannot be signalled from outside its confinement, so
-    a failed run **leaks one process per test** that `pkill` cannot reap.
+    a failed run **leaks one process per test** that neither `pkill` nor
+    selenium's own `terminate()` can reap — `service.terminate()` raises
+    `PermissionError`. The cause is **AppArmor**, not snapd or permissions: the
+    process runs under `snap.firefox.geckodriver (enforce)` while an ordinary
+    shell is `unconfined`, in the *same* user namespace and the *same* uid, and
+    the profile has no rule letting an unconfined process signal it. A failed
+    run on 2026-10-15 left 48 of them holding 273 MB.
+  - `snap stop firefox` does **not** reap them — that snap exposes no services,
+    so `snap start/stop/restart firefox` all answer `has no services`. Signal
+    them from inside the confinement instead, which is the only context AppArmor
+    permits: `snap run --shell firefox -c 'kill -9 $(pgrep -x geckodriver)'`.
+    Check with `pgrep -xc geckodriver`.
   So this host carries a plain Firefox under `local/firefox` with
   `local/py3/bin/firefox` pointing at it (`manage` puts `local/py3/bin` first on
   PATH). `local/` is gitignored, so this is environment, not repository.
