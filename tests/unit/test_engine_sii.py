@@ -300,6 +300,21 @@ class SiiRelevanceTests(_SiiEngineTestCase):
             f"no drop count in {caught.output}",
         )
 
+    def test_a_repeated_article_is_counted_once(self):
+        """`dropped N of M` counts articles, not blocks.
+
+        `seen` only recorded kept rows, so a URL appearing twice was examined -
+        and rejected - twice, and the line claimed two articles where the page
+        carried one. A count that overstates is the same fault as a cause named
+        without measuring it, so the dedup happens first.
+        """
+        with self.assertLogs(self.engine.logger, level="DEBUG") as caught:
+            self.engine.response(_resp(self.TERM_BLOCK + self.TERM_BLOCK, query="kghm"))
+        self.assertTrue(
+            any("dropped 1 of 1" in line for line in caught.output),
+            f"the repeat was counted twice: {caught.output}",
+        )
+
     def test_a_kept_row_logs_nothing(self):
         # assertNoLogs fails on ANY record at this level, which is the point:
         # a search that kept its rows has nothing to report.

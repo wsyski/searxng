@@ -84,7 +84,6 @@ _ITEM_RE = re.compile(
     re.S,
 )
 _H3_RE = re.compile(r"<h3[^>]*>(.*?)</h3>", re.S)
-_TICKER_RE = re.compile(r"\(([A-Z0-9.\-]{1,8})\)")
 _UPDATED_RE = re.compile(r"Aktualizacja:\s*(\d{1,2})\s+(\w{3})\s+(\d{4})")
 _BADGE_RE = re.compile(r'<span data-slot="label"[^>]*>([^<]+)</span>')
 
@@ -153,26 +152,19 @@ def response(resp) -> EngineResults:
 
 
 def _title(card):
+    """The <h3>, flattened.
+
+    This is also where the ticker comes from: the heading nests it in a span —
+    `<h3>Alibaba Group <span>(BABA)</span></h3>` — so `html_to_text` leaves
+    "Alibaba Group (BABA)" and the result title carries both. There was a
+    separate `_ticker()` that pulled the code out with its own regex; nothing
+    called it, so it was a second parse of a field already in the title. It is
+    gone rather than kept as a helper nothing reaches.
+    """
     m = _H3_RE.search(card)
     if not m:
         return ""
     return re.sub(r"\s+", " ", html_to_text(m.group(1))).strip()
-
-
-def _ticker(card):
-    # Search once and reuse the match. This used to be
-    # `_TICKER_RE.search(_H3_RE.search(card).group(1)) if _H3_RE.search(card)`
-    # - the same regex run twice, with the guard deciding on one call and the
-    # body dereferencing the other. Deterministic, so it cannot actually fail,
-    # but it reads as though it can, and basedpyright reports exactly that as
-    # reportOptionalMemberAccess: "group is not a known attribute of None".
-    # That was the only *error* among this fork's engines, as distinct from the
-    # reportUnknown* warnings the untyped engine API produces.
-    heading = _H3_RE.search(card)
-    if not heading:
-        return None
-    m = _TICKER_RE.search(heading.group(1))
-    return m.group(1) if m else None
 
 
 def _badges(card):

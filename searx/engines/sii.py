@@ -207,6 +207,11 @@ def response(resp) -> EngineResults:
         if not _ARTICLE_RE.match(url) or url in seen or not title:
             continue
 
+        # Recorded BEFORE the relevance filter, not after: a repeat of the same
+        # article is one article, and counting its rejection twice would put a
+        # number in the log that the page does not support.
+        seen.add(url)
+
         content = html_to_text(_teaser(block))
 
         haystack = _fold(title + " " + content)
@@ -216,8 +221,6 @@ def response(resp) -> EngineResults:
         if any(t not in haystack for t in terms):
             dropped += 1
             continue
-
-        seen.add(url)
 
         results.add(
             results.types.LegacyResult(
