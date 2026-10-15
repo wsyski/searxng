@@ -68,7 +68,9 @@ offered and then found to be broken.
 """
 
 import re
+import unicodedata
 from datetime import datetime
+from urllib.parse import urlencode
 
 from searx.exceptions import (
     SearxEngineAccessDeniedException,
@@ -119,8 +121,10 @@ _META_CLASS = "metas"
 
 
 def request(query, params):
-    # `search`, never `q` — see the module docstring.
-    params["url"] = f"{base_url}/szukaj?search={query}"
+    # `search`, never `q` — see the module docstring. urlencode, not an
+    # f-string: `AT&T` interpolated raw becomes search=AT plus a stray `T`
+    # parameter, and `C#` truncates the query at the fragment.
+    params["url"] = f"{base_url}/szukaj?" + urlencode({"search": query})
     params["headers"].update(headers)
     # A query that matches nothing is answered 404, not 200-with-no-rows, and
     # SearXNG raises on an error status before response() ever runs. Left

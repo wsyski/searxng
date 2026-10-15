@@ -93,6 +93,12 @@ class DnaRynkowEngineTests(SearxTestCase):
         self.engine.request("alibaba", params)
         self.assertIn("page=3", params["url"])
 
+    def test_request_encodes_reserved_characters(self):
+        params = {"pageno": 2}
+        self.engine.request("AT&T", params)
+        self.assertIn("search=AT%26T", params["url"])
+        self.assertTrue(params["url"].endswith("&page=2"))
+
     def test_paging_is_enabled(self):
         self.assertTrue(self.engine.paging)
 

@@ -96,6 +96,12 @@ class SiiEngineTests(SearxTestCase):
         self.engine.request("nothing", params)
         self.assertFalse(params["raise_for_httperror"])
 
+    def test_request_encodes_reserved_characters(self):
+        """A raw f-string turned `AT&T` into search=AT plus a stray `T` parameter."""
+        params = {"headers": {}}
+        self.engine.request("AT&T C#", params)
+        self.assertIn("search=AT%26T+C%23", params["url"])
+
     def test_request_identifies_as_searxng(self):
         params = {"headers": {}}
         self.engine.request("orlen", params)

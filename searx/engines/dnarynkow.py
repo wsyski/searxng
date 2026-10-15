@@ -55,6 +55,7 @@ Checked with ``?search=a``, which reports 56 matches and returns 24 + 24 + 8.
 
 import re
 from datetime import datetime
+from urllib.parse import urlencode
 
 from searx.exceptions import SearxEngineResponseException
 from searx.result_types import EngineResults
@@ -108,8 +109,10 @@ _MONTHS = {
 
 def request(query, params):
     # `search`, on the stock index. There is no search page to link to.
+    # urlencode, not an f-string: `AT&T` interpolated raw becomes search=AT plus
+    # a stray `T` parameter, and `C#` truncates the query at the fragment.
     page = params.get("pageno", 1)
-    params["url"] = f"{base_url}/spolki/?search={query}&page={page}"
+    params["url"] = f"{base_url}/spolki/?" + urlencode({"search": query, "page": page})
     return params
 
 
