@@ -188,6 +188,17 @@ def main() -> None:
 
     payload = fetch(build_url(sx, args), args.timeout, origin)
 
+    # Two ways the answer can be somebody else's, or nobody's. Both look healthy,
+    # so neither can be left to the reader of the result list.
+    #
+    # Before the --json return, deliberately: --json is the path a caller pipes
+    # into another tool, which is where a silently wrong answer is least
+    # visible. They go to stderr and print nothing, so stdout stays a clean
+    # JSON document and `sxq ... --json | jq` keeps working.
+    if args.engines:
+        report_foreign_engines(payload, args.engines)
+    report_empty_time_range(payload, args.time_range)
+
     if args.json:
         json.dump(payload, sys.stdout, ensure_ascii=False, indent=2)
         print()
@@ -215,12 +226,6 @@ def main() -> None:
 
     for suggestion in (payload.get("suggestions") or [])[:3]:
         print(f"  did you mean: {suggestion}?")
-
-    # Two ways the answer can be somebody else's, or nobody's. Both look
-    # healthy, so neither can be left to the reader of the result list.
-    if args.engines:
-        report_foreign_engines(payload, args.engines)
-    report_empty_time_range(payload, args.time_range)
 
 
 if __name__ == "__main__":

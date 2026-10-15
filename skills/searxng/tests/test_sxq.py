@@ -19,9 +19,11 @@ set, so `-c news --time-range week` returns nothing with an empty
 import importlib.machinery
 import importlib.util
 import io
+import json
 import os
+import sys
 import unittest
-from contextlib import redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 _loader = importlib.machinery.SourceFileLoader("sxq", os.path.join(HERE, "..", "scripts", "sxq"))
@@ -29,6 +31,33 @@ _spec = importlib.util.spec_from_loader("sxq", _loader)
 assert _spec is not None, "spec_from_loader returns None only for a loader it cannot use"
 sxq = importlib.util.module_from_spec(_spec)
 _loader.exec_module(sxq)  # load_module() is gone in current Pythons
+
+# One response, reused: a pinned engine that SearXNG ignored, so the answer is
+# somebody else's. This is the shape both of main()'s diagnostics exist for.
+FOREIGN_PAYLOAD = {
+    "results": [{"engines": ["mwmbl"]}, {"engines": ["sii"]}],
+    "unresponsive_engines": [],
+}
+
+
+def run_main(argv):
+    """Run sxq's main() against a stubbed HTTP layer; return (stdout, stderr)."""
+    # setattr/getattr rather than `sxq.fetch = ...`: sxq was loaded from a file
+    # with no .py suffix, so the checker sees a plain ModuleType and will not
+    # let a declared attribute be assigned.
+    saved_argv, saved_fetch = sys.argv, getattr(sxq, "fetch")
+    sys.argv = ["sxq"] + argv
+    setattr(sxq, "fetch", lambda url, timeout, origin: dict(FOREIGN_PAYLOAD))
+    out, err = io.StringIO(), io.StringIO()
+    try:
+        with redirect_stdout(out), redirect_stderr(err):
+            sxq.main()
+    finally:
+        # Restore both: leaking the stub would make every later test in this
+        # process believe it is talking to a network.
+        sys.argv = saved_argv
+        setattr(sxq, "fetch", saved_fetch)
+    return out.getvalue(), err.getvalue()
 
 
 class Diagnostics(unittest.TestCase):
@@ -80,6 +109,31 @@ class Diagnostics(unittest.TestCase):
     def test_non_empty_time_range_result_is_quiet(self):
         payload = {"results": [{"engines": ["bing news"]}], "unresponsive_engines": []}
         self.assertEqual(self._err(sxq.report_empty_time_range, payload, "week"), "")
+
+
+class Wiring(unittest.TestCase):
+    """That main() calls them at all.
+
+    Every other test here exercises a function directly, which is exactly how a
+    diagnostic can be written, tested, and never wired up. These drive main()
+    itself against a stubbed response, because the failure they cover is a call
+    that is simply absent — invisible to any test of the function.
+    """
+
+    def test_a_ignored_pin_warns_on_the_normal_path(self):
+        _, err = run_main(["test", "-e", "mojeek news"])
+        self.assertIn("you did not pin", err)
+
+    def test_a_ignored_pin_warns_in_json_mode_too(self):
+        """`--json` is the path a caller pipes into another tool, so it is the
+        one where a silently wrong answer is least visible. Emitting the warning
+        on stderr keeps stdout a clean JSON document and still says it."""
+        out, err = run_main(["test", "-e", "mojeek news", "--json"])
+        self.assertIn("you did not pin", err)
+        # ... and stdout must stay parseable, or the fix costs the caller more
+        # than the warning is worth.
+        self.assertIn('"results"', out)
+        json.loads(out)
 
 
 if __name__ == "__main__":

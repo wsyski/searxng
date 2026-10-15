@@ -28,11 +28,17 @@ an hour. A coverage report that reads a throttled engine as silence is worse tha
 sxq kghm -c news
 ```
 
-`sii` supplies 10 of ~52 results and is the only engine of the three in `news`.
+`sii` supplies a share of the results and is in `news` alongside the other four; a `sii` row
+always carries every query term in its title or teaser, so a hit here names its company.
 
-**Do not add `--time-range` to a news query.** `-c news --time-range week` returns zero, with
-no error and an empty `.unresponsive_engines`. `-c general --time-range week` works. Take a
-window and filter on `publishedDate` yourself.
+**`--time-range` works on a news query now** (as of 2026-10-15; this paragraph used to say the
+opposite). `-c news --time-range week` used to return zero with an empty
+`.unresponsive_engines`, because every engine in the category lacks `time_range_support` and
+SearXNG *drops* those when a range is set — so no engine ran at all. `bing news` is now enabled
+and does support ranges, and `-c news --time-range week` answers with `bing news` rows. Two
+caveats worth keeping: `sii` is dropped for a ranged query like everything else there, and if the
+result is ever empty again `sxq` says why on stderr. `-c general --time-range week` works too;
+otherwise filter on `publishedDate` yourself.
 
 ## Code, issues and PRs
 
