@@ -73,7 +73,9 @@ opposite diagnoses, and `references/categories.md` has the table.
 - **A `sii` hit carries every query term.** sii.org.pl ORs the terms, so `zzqxv term` returns the
   same ten rows as `term`; the engine drops any row missing a term (measured 2026-10-15, where
   those ten rows were 10 of 96 in a general search). A `sii` result therefore names its company —
-  but a *miss* can still be a synonym (`PKN` for `Orlen`), so issue the ticker and the name.
+  but a *miss* can still be a synonym (`PKN` for `Orlen`), so issue the ticker and the name. The
+  engine logs `dropped N of M` at debug when it drops rows; an empty `sii` result is not proof
+  that sii.org.pl has nothing.
 - **A pinned engine that is not loaded runs the default search** and says nothing. `sxq` warns on
   stderr when results come from engines you did not pin; see `references/categories.md`.
 

@@ -380,7 +380,13 @@ changes to the base file do not conflict.
   term appears in its title or teaser, folded case- and diacritic-insensitively
   (`ł`→`l` explicitly, which NFKD alone does not do). The OR happens
   server-side, so a filter in `response()` is the only place that can see both
-  the query and the row.
+  the query and the row. The filter's cost is otherwise invisible — a query
+  whose rows all use a synonym (`PKN` for `Orlen`) returns empty, and empty
+  looks the same from outside — so it logs `dropped N of M row(s)` at **debug**
+  with the query. Debug, not warning: a synonym miss is an accepted outcome of
+  the design, and a warning here would train people to ignore the ones that
+  matter. This instance runs `general.debug: false`, so the line appears only
+  for an operator who has turned debug on.
 - **Pinning an engine this instance does not have runs the default search, and
   says nothing.** `engines=mojeek news` returns 96 results from `mwmbl`,
   `duckduckgo web` and `sii`. That is upstream behaviour and is not worked

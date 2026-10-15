@@ -115,11 +115,26 @@ def report_foreign_engines(payload: dict, pinned: str) -> None:
     foreign = sorted(got - want)
     if foreign:
         print(f"\n!! results came from engines you did not pin: {', '.join(foreign)}", file=sys.stderr)
-        print(
-            f"   {', '.join(sorted(want - got)) or 'the pinned engine'} is probably not loaded "
-            "(inactive or misspelt) - check `sxq --health`.",
-            file=sys.stderr,
-        )
+        silent = sorted(want - got)
+        if not got & want:
+            # No row carries a pinned engine, so none of them ran: that IS
+            # evidence they are not loaded, and it is the common case - a name
+            # SearXNG does not know falls back to the default categories whole.
+            print(
+                f"   no result carries any engine you pinned, so "
+                f"{', '.join(silent) or 'the pinned engine'} is probably not loaded "
+                "(inactive or misspelt) - check `sxq --health`.",
+                file=sys.stderr,
+            )
+        elif silent:
+            # The distinction that matters: a pinned engine that matched nothing
+            # is NOT the same as one that failed to load, and saying so sends
+            # the reader after a fault that is not there. Say what was measured.
+            print(
+                f"   {', '.join(silent)} matched nothing in these results - that is not the same as "
+                "not being loaded; check `sxq --health` only if you expected a hit.",
+                file=sys.stderr,
+            )
 
 
 def report_empty_time_range(payload: dict, time_range: str) -> None:

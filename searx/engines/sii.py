@@ -197,6 +197,7 @@ def response(resp) -> EngineResults:
 
     seen = set()
     terms = _terms(resp.search_params.get("query", ""))
+    dropped = 0
 
     for block in _BLOCK_RE.findall(resp.text):
         m = _TITLE_RE.search(block)
@@ -213,6 +214,7 @@ def response(resp) -> EngineResults:
         # if EVERY term is in what we can see of it. Measured 2026-10-15:
         # `zzqxv term` returned the same ten rows as `term`. See the docstring.
         if any(t not in haystack for t in terms):
+            dropped += 1
             continue
 
         seen.add(url)
@@ -226,6 +228,21 @@ def response(resp) -> EngineResults:
                     "publishedDate": _parse_date(block),
                 }
             )
+        )
+
+    if dropped:
+        # The filter's cost is otherwise invisible: a query whose rows all use a
+        # synonym (`PKN` for `Orlen`) comes back empty, and "empty" and
+        # "correctly filtered" look the same from outside. Debug, not warning -
+        # a synonym miss is an accepted outcome of the design rather than a
+        # fault, and a warning here would train people to ignore the ones that
+        # matter. The query is named because it is the other half of the
+        # question an operator is asking.
+        logger.debug(
+            "dropped %d of %d row(s): none carried every term of %r",
+            dropped,
+            dropped + len(results),
+            resp.search_params.get("query", ""),
         )
 
     return results

@@ -286,3 +286,22 @@ class SiiRelevanceTests(_SiiEngineTestCase):
     def test_an_empty_query_keeps_rows(self):
         """No terms, nothing to require - do not turn a parsing test into a filter test."""
         self.assertEqual(len(self.engine.response(_resp(COMMENT_BLOCK, query=""))), 1)
+
+    def test_dropped_rows_are_counted_at_debug_level(self):
+        """The filter's cost is invisible otherwise: a query whose rows all
+        mention a synonym comes back empty, and "empty" and "correctly filtered"
+        look identical from outside. Debug, not warning - a synonym miss is an
+        accepted outcome of the design, not a fault, and a warning here would
+        train people to ignore the ones that matter."""
+        with self.assertLogs(self.engine.logger, level="DEBUG") as caught:
+            self.engine.response(_resp(self.TERM_BLOCK, query="zzqxv termin"))
+        self.assertTrue(
+            any("dropped 1 of 1" in line for line in caught.output),
+            f"no drop count in {caught.output}",
+        )
+
+    def test_a_kept_row_logs_nothing(self):
+        # assertNoLogs fails on ANY record at this level, which is the point:
+        # a search that kept its rows has nothing to report.
+        with self.assertNoLogs(self.engine.logger, level="DEBUG"):
+            self.engine.response(_resp(COMMENT_BLOCK, query="orlen"))
