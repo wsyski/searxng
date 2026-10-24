@@ -13,7 +13,7 @@ The sibling files: `README.md` has the short "This fork" summary,
 
 | Path | Owner |
 |---|---|
-| `searx/` | the application package. `searx/engines/` (256 modules), `searx/plugins/`, `searx/answerers/`, `searx/search/processors/`, `searx/result_types/`, `searx/enginelib/`, `searx/botdetection/`, `searx/network/`, `searx/favicons/` |
+| `searx/` | the application package. `searx/engines/` (257 modules), `searx/plugins/`, `searx/answerers/`, `searx/search/processors/`, `searx/result_types/`, `searx/enginelib/`, `searx/botdetection/`, `searx/network/`, `searx/favicons/` |
 | `searx/settings.yml` | 3500-line **default** settings (see Runtime / config) |
 | `searx/static/themes/simple/` | **committed build output** of `client/simple/` |
 | `client/simple/` | frontend source: Vite + TypeScript + LESS, Biome + Stylelint |
@@ -365,7 +365,8 @@ changes to the base file do not conflict.
   Anything edited under `searx/` here is inert until it is bind-mounted in
   `docker-compose.override.yml`, and that failure is silent: the repo looks
   patched while the container keeps the image's copy. Currently mounted —
-  `liferay_forum.py`, `sii.py`, `dnarynkow.py`, `ksiazak.py` (fork-local) and
+  `liferay_forum.py`, `sii.py`, `dnarynkow.py`, `ksiazak.py` (fork-local),
+  `stooq.py` (fork-local, enabled in `finance`/`finance-poland`; see `README.md`) and
   `github.py` (an upstream engine patched fork-side to read the GitHub token
   from the environment). Check with
   `docker exec searxng-core grep -c GITHUB_PERSONAL_ACCESS_TOKEN /usr/local/searxng/searx/engines/github.py`,

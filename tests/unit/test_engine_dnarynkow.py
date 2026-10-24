@@ -213,5 +213,5 @@ class DnaRynkowEngineTests(SearxTestCase):
         self.assertIsNotNone(rows[0].publishedDate)
         self.assertIsNone(rows[1].publishedDate)
 
-    def test_the_category_is_news(self):
-        self.assertEqual(self.engine.categories, ["general"])
+    def test_the_category_is_finance(self):
+        self.assertEqual(self.engine.categories, ["finance", "finance-poland"])

@@ -27,16 +27,20 @@ Both were live defects on 2026-10-15 and both are fixed; they are written down
 because a *client* cannot tell the difference from a correct answer, and
 Firecrawl searches through this instance.
 
-- **A news query with a time range used to run zero engines.** Every engine in
-  `news` lacked `time_range_support`, and SearXNG *drops* those when a range is
-  set — so the answer was empty, with an empty `unresponsive_engines`. `bing
-  news` is now enabled and does support ranges. It carries `enable_http3: false`
-  in the settings, because `bing_news.py` asks for HTTP/3 and UDP/443 is filtered
-  on this egress: that, not bing, was the "connection error" recorded on 2026-10-10.
+- **A news query with a time range still runs no engine in practice.** SearXNG
+  *drops* every news engine without `time_range_support`, and only `bing news`
+  has it. Measured 2026-10-24: `-c news --time-range day` and `week` return zero
+  rows; `bing news` answers with a parsing error (an empty response body) and
+  the others are dropped. `bing news` keeps `enable_http3: false` because
+  `bing_news.py` asks for HTTP/3 and UDP/443 is filtered on this egress. The
+  portfolio's Firecrawl news sweeps therefore omit `tbs`; re-add a range when
+  `bing news` returns rows again or another range-capable news engine lands.
 - **Pinning an engine this instance does not have runs the default search.**
   `engines=mojeek news` returned 96 rows from `mwmbl`, `duckduckgo web` and
-  `sii`. That is upstream behaviour and is not worked around here; the skill's
-  `sxq` detects it instead. `DESIGN.md` → Local deployment has the measurements.
+  `sii` when it was measured on 2026-10-15; `sii` is finance-only since
+  2026-10-24, so a repeat would be short those rows. That is upstream behaviour
+  and is not worked around here; the skill's `sxq` detects it instead. `DESIGN.md`
+  → Local deployment has the measurements.
 
 **This instance has no authentication.** It is published on the LAN address so
 LAN clients can reach it, which makes it an open search proxy. Keep it that way
@@ -88,7 +92,24 @@ changing anything:
 | `dna rynkow` (`!dna`) | dnarynkow.pl `/spolki/?search=` | No search *page* — only a parameter, so every path-shaped probe 404s while the search works. Results are server-rendered into the HTML body, not into the `__NUXT_DATA__` payload. |
 | `ksiazak` (`!ksz`) | konradksiazak.pl WordPress REST | `search` matches body text, so a hit does **not** mean the company is in the title. |
 
-Fifth mount is not fork-local: `github.py` is an **upstream** engine patched
+These three, and stooq below, are in **both `finance` and `finance-poland`** —
+not `general` or `news`. `finance` is the international/general finance category;
+`finance-poland` is the Polish subset. A default search no longer runs them;
+request either category explicitly (`-c finance` / `-c finance-poland` or the
+tabs). The portfolio's DeGiro news pass asks for `finance-poland` once per day
+for the highest-weight uncovered holding.
+
+The fifth fork-local engine is not a company source. `stooq` (`!stq`) wraps
+stooq.com's `/search/`, which is a Polish **news** index of PAP items, not a
+ticker lookup (`/q/s/` matches symbols only). It is **enabled in
+`finance`/`finance-poland` only**, so it never joins ordinary news/general searches —
+including Firecrawl's — and runs when that category is requested. The portfolio
+requests it once per day; a manual `-c finance` is an explicit request. That is
+deliberate: the site's `robots.txt` allows only Bingbot and Googlebot, and the
+page sits behind a SHA-256 proof-of-work gate plus a Google consent wall, both of
+which the engine clears. `searx/engines/stooq.py` records the measurement.
+
+Sixth mount is not fork-local: `github.py` is an **upstream** engine patched
 here to read the GitHub token from the environment. Without that mount the
 container keeps the image's copy and the patch is a silent no-op — the repo
 looks patched while nothing changed.

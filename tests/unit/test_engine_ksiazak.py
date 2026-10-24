@@ -171,5 +171,5 @@ class KsiazakEngineTests(SearxTestCase):
         self.assertIn("Atrem", _first(results).title)
         self.assertNotIn("Orlen", _first(results).title)
 
-    def test_the_category_is_news(self):
-        self.assertEqual(self.engine.categories, ["general"])
+    def test_the_category_is_finance(self):
+        self.assertEqual(self.engine.categories, ["finance", "finance-poland"])

@@ -3,8 +3,8 @@
 Measured 2026-10-11 against `192.168.1.100:8888`, SearXNG 2026.10.9. **Single sample per
 category** — see "How this was measured" before trusting a row.
 
-**88 of 265 engines are enabled** (re-counted 2026-10-15; the 2026-10-11 figure was 87, before
-`bing news` was enabled — see "Changed since 2026-10-11" below).
+**89 of 265 engines are enabled** (re-counted 2026-10-24 after stooq moved into `finance` and was
+enabled; the 2026-10-15 figure was 88 — see "Changed since 2026-10-11" below).
 
 ## Changed since 2026-10-11
 
@@ -18,8 +18,37 @@ provenance. These four were re-run on 2026-10-15 because the work that day could
 | `science` | crispr | 94 | **85** | as above — a sample, not a property |
 | `it` | pytest fixtures | 148 | **151** | as above |
 
-`sii` also changed behaviour rather than count: it now drops any row missing a query term, so it
-contributes fewer — and more relevant — rows to `general` than it did on 2026-10-11.
+`sii` also changed behaviour rather than count: it drops any row missing a query term. It used
+to contribute to `general`; since 2026-10-24 it is `finance` only.
+
+## finance and finance-poland (new 2026-10-24)
+
+`sii`, `dna rynkow`, `ksiazak` and `stooq` moved out of `general`/`news` into **both** `finance`
+(international/general finance) and `finance-poland` (the Polish subset). They run only when one
+of those categories is requested (`-c finance`, `-c finance-poland`, the tabs, or the portfolio
+job's explicit `categories=finance-poland` call). Measured 2026-10-24 after stooq was enabled:
+`-c finance-poland` + `q=orlen` returned **20 rows**, from `sii`, `ksiazak` and `stooq`;
+`dna rynkow` has no Orlen card and returned zero. The `general` and `news` rows in the matrix
+above are pre-move — subtract these engines from any post-move count. The earlier `polish-equity`
+idea is realized as `finance-poland`: the hyphenated name sorts beside `finance` and works in
+`-c`/API/tab, but `!finance-poland` is not a bang (SearXNG rewrites `-` in bangs).
+
+## Opt-in: stooq
+
+`stooq` (`!stq`) is registered in **both** `finance` and `finance-poland` and is **enabled**, so
+either category calls it; `-c news` and default general queries do not. It wraps stooq.com's
+`/search/`, a PAP **news** index — not ticker lookup, which is `/q/s/` and exact-symbol only. The
+site's `robots.txt` allows only Bingbot and Googlebot, and the page is behind a SHA-256
+proof-of-work gate and a Google consent wall; the engine clears both. The portfolio requests
+`categories=finance-poland` once per day (the scheduled cap); pin it manually with either form:
+
+```bash
+sxq orlen -c finance-poland
+sxq orlen -e stooq
+```
+
+Rows carry a Polish `publishedDate`; a query with no matches is zero results, not an error. Do not
+add it to `-c news` — Firecrawl's news searches use that category too.
 
 ## What works
 
@@ -154,7 +183,7 @@ from the selection and falls back to the default categories. Measured 2026-10-15
 
 | `engines=` | Results | Attributed to |
 |---|---|---|
-| `mojeek news` (inactive upstream) | 96 | `mwmbl` 77, `duckduckgo web` 9, `sii` 10 |
+| `mojeek news` (inactive upstream) | 96 (2026-10-15) | `mwmbl` 77, `duckduckgo web` 9, `sii` 10 — `sii` is now finance-only, so a repeat is short its rows |
 | `startpage news` (inactive upstream) | 97 | the same set plus `yahoo` |
 | `bing news` | 10 | `bing news` 10 |
 
@@ -166,12 +195,12 @@ against the pin and warns on stderr when they differ, including under `--json`.
 Measurements; `SKILL.md` carries the behaviour guidance.
 
 SearXNG **drops** every engine whose `time_range_support` is False when a range is set. In `news`
-that was all four of them — `duckduckgo news`, `qwant news`, `wikinews`, `sii` — so `-c news
---time-range week` ran **zero** engines and answered with an empty result and an empty
-`.unresponsive_engines`. That is a healthy-looking empty.
+that is `duckduckgo news`, `qwant news` and `wikinews`; only `bing news` remains. Re-measured
+2026-10-24: `-c news --time-range day` and `week` both returned **zero** rows; `bing news` answered
+with a parsing error (empty response body) and the others were dropped. That is a healthy-looking
+empty, so the portfolio's Firecrawl news sweeps omit `tbs` for now.
 
-`bing news` is enabled and does support ranges; `2026-10-15` it answered 4 results for
-`-c news --time-range week`, all attributed to `bing news`. It needs `enable_http3: false` in
-`container/core-config/settings.yml`, because `bing_news.py` asks for HTTP/3 and UDP/443 is
-filtered on this host. `sxq` warns on stderr when a range is set, the result is empty, and nothing
+`bing news` needs `enable_http3: false` in `container/core-config/settings.yml`, because
+`bing_news.py` asks for HTTP/3 and UDP/443 is filtered on this host. `sxq` warns on stderr when a
+range is set, the result is empty, and nothing
 failed — the signature of that exact configuration.

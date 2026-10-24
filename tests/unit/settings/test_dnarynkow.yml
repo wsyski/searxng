@@ -6,11 +6,15 @@ use_default_settings:
     # remove all engines
     keep_only: []
 
+categories_as_tabs:
+  finance:
+  finance-poland:
+
 engines:
 
   - name: dna rynkow
     engine: dnarynkow
-    categories: ["general"]
+    categories: ["finance", "finance-poland"]
     shortcut: "dna"
     timeout: 9.0
     disabled: true

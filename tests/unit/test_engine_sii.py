@@ -194,8 +194,8 @@ class SiiRequestTests(_SiiEngineTestCase):
         """strona=2 returns byte-identical output, so offering it would break."""
         self.assertFalse(self.engine.paging)
 
-    def test_the_engine_is_news_only(self):
-        self.assertEqual(self.engine.categories, ["news", "general"])
+    def test_the_engine_is_finance_only(self):
+        self.assertEqual(self.engine.categories, ["finance", "finance-poland"])
 
 
 class SiiParsingTests(_SiiEngineTestCase):

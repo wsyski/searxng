@@ -10,14 +10,14 @@ The question a small analyst office answers. Sparse by design — empty is the n
 a hit means a dedicated analyst picked that company.
 
 ```bash
-sxq orlen -e "sii,dna rynkow,ksiazak"
+sxq orlen -c finance-poland
 ```
 
 Returns SII's *Spółka tygodnia* note on ORLEN, plus a Książak note that mentions ORLEN inside
 its body (the company is **not** in that title — WordPress `search` matches body text).
 
-Per company, one request fans out to all three engines; SearXNG runs them concurrently and
-caches.
+The `finance-poland` category fans out to all four engines; SearXNG runs them concurrently and
+caches. The engines are in `finance` and `finance-poland` only, so a default general/news query does not reach them.
 
 **Check `.unresponsive_engines` before recording "no coverage".** All three are rate-limited or
 blocking-prone: `sii` returns HTTP 429 after two or three queries in a burst and suspends for
@@ -29,16 +29,20 @@ an hour. A coverage report that reads a throttled engine as silence is worse tha
 sxq kghm -c news
 ```
 
-`sii` supplies a share of the results and is in `news` alongside the other four; a `sii` row
-always carries every query term in its title or teaser, so a hit here names its company.
+`sii` is **not** in `news` any more; it runs only in `finance`. For company coverage use
+`sxq kghm -c finance-poland`. A `sii` row always carries every query term in its title or teaser, so a
+hit there names its company.
+
+`stooq` is **not** in `news`; it is in `finance` only, because its site disallows crawling.
+`sxq kghm -c finance-poland` includes it, and so does the portfolio's daily finance request; a manual
+call is explicit, so keep those sparse.
 
 **`--time-range` works on a news query now** (as of 2026-10-15; this paragraph used to say the
 opposite). `-c news --time-range week` used to return zero with an empty
 `.unresponsive_engines`, because every engine in the category lacks `time_range_support` and
 SearXNG *drops* those when a range is set — so no engine ran at all. `bing news` is now enabled
-and does support ranges, and `-c news --time-range week` answers with `bing news` rows. Two
-caveats worth keeping: `sii` is dropped for a ranged query like everything else there, and if the
-result is ever empty again `sxq` says why on stderr. `-c general --time-range week` works too;
+and does support ranges, and `-c news --time-range week` answers with `bing news` rows. One
+caveat worth keeping: if the result is ever empty again `sxq` says why on stderr. `-c general --time-range week` works too;
 otherwise filter on `publishedDate` yourself.
 
 ## Code, issues and PRs

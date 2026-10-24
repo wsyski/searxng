@@ -35,6 +35,26 @@ search:
     - html
     - json
 
+# A tab is a selector, not a pipeline: engines in `finance` / `finance-poland`
+# run only when one of those categories is requested (`categories=...`, `-c ...`,
+# or the UI tab). `finance` is international/general finance; `finance-poland`
+# is its Polish subset. They no longer run in default `general` or `news`
+# searches. Adding a key here replaces the default map wholesale
+# (searx/settings_loader.py:138), so every default tab is copied below.
+categories_as_tabs:
+  general:
+  images:
+  videos:
+  news:
+  map:
+  music:
+  it:
+  science:
+  files:
+  social media:
+  finance:
+  finance-poland:
+
 outgoing:
   request_timeout: 6.0
   max_request_timeout: 12.0
@@ -83,6 +103,10 @@ engines:
     shortcut: lf
     categories: it
     disabled: false
+  # The three finance engines below are in the `finance` tab only (see
+  # categories_as_tabs above). They do not run in default general/news
+  # searches; request the category explicitly (`-c finance`, `!finance`, or the
+  # portfolio job's categories=finance call).
   # SII - Stowarzyszenie Inwestorow Indywidualnych (sii.org.pl), Poland's
   # individual-investor association. Per-company commentary that names a GPW
   # ticker in the title, which is what makes it searchable. Not an upstream
@@ -100,6 +124,7 @@ engines:
   # to any realistic agent string, so honesty costs nothing here.
   - name: sii
     engine: sii
+    categories: [finance, finance-poland]
     shortcut: sii
     disabled: false
   # DNA Rynkow (dnarynkow.pl) - per-company cards for ~100 listed names.
@@ -116,6 +141,7 @@ engines:
   # requested here. Coverage is partial - Orlen has no card and returns zero.
   - name: dna rynkow
     engine: dnarynkow
+    categories: [finance, finance-poland]
     shortcut: dna
     disabled: false
   # Ksiazak (konradksiazak.pl) - a small office publishing long-form single-company
@@ -127,7 +153,28 @@ engines:
   # Reads the public WordPress REST API rather than scraping HTML.
   - name: ksiazak
     engine: ksiazak
+    categories: [finance, finance-poland]
     shortcut: ksz
+    disabled: false
+  # Stooq (stooq.com) - a Polish market portal whose /search/ is a PAP *news*
+  # index, not an instrument search (ticker lookup is /q/s/, exact-symbol only).
+  # ENABLED, but in the finance and finance-poland categories only (the tabs above):
+  #   - robots.txt is `User-agent: * / Disallow: /`; only Bingbot and Googlebot
+  #     are allowed. This is the one engine here that ignores that directive.
+  #   - the page sits behind a SHA-256 proof-of-work gate and a Google consent
+  #     wall. The engine solves the PoW and sets privacy=1, which is a consent
+  #     cookie set without consent. Both were the operator's explicit decision.
+  # Finance-only keeps it out of default news/general searches, including
+  # Firecrawl's (SEARXNG_NEWS_CATEGORIES=news). The portfolio requests
+  # categories=finance-poland once a day, which is its scheduled cap; manual
+  # calls:
+  #   !stq <terms>                              (UI / HTML search)
+  #   categories=finance-poland&format=json     (API)
+  # Measured 2026-10-24; see searx/engines/stooq.py for the full measurement.
+  - name: stooq
+    engine: stooq
+    shortcut: stq
+    categories: [finance, finance-poland]
     disabled: false
   # News: duckduckgo news, wikinews (default on), qwant news and bing news answer.
   # None of the first three supports time_range, and SearXNG drops an engine that

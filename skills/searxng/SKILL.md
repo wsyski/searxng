@@ -25,7 +25,7 @@ SearXNG runs from `/opt/playground/searxng`, container `searxng-core`, published
 
 ```bash
 sxq "liferay 7.4 upgrade" -n 5
-sxq orlen -e "sii,dna rynkow,ksiazak"
+sxq orlen -c finance-poland
 sxq "AI regulation" -c news
 sxq --health
 ```
@@ -68,23 +68,23 @@ not silence stderr on a pinned or ranged query — it is the only place either f
 
 ## Four behaviours that mislead
 
-- **`--time-range` with `-c news` works, through `bing news`** — the only enabled news engine with
-  `time_range_support`. The other four are *dropped* when a range is set, so before it was enabled
-  the search ran zero engines and returned nothing with an empty `.unresponsive_engines`. If you
-  see that empty again, `sxq` says so on stderr: no selected news engine supports the range.
-  `-c general` with `--time-range` also works; otherwise take a window and filter on `publishedDate`.
+- **`--time-range` with `-c news` is empty in practice.** Only `bing news` has `time_range_support`;
+  the other three are dropped when a range is set. Measured 2026-10-24: day and week both returned
+  zero rows, with `bing news` reporting a parsing error. Do not pass `--tbs` on portfolio news
+  sweeps; take a window and filter on `publishedDate` instead. `sxq`'s "no news engine supports the
+  range" warning no longer covers this case, because `bing news` does claim support.
 - **A hit does not mean the company is in the title.** Książak reads the WordPress REST API,
   whose `search` matches body text, so `orlen` returns a note about another company.
 - **A `sii` hit carries every query term.** sii.org.pl ORs the terms, so `zzqxv term` returns the
   same ten rows as `term`; the engine drops any row missing a term (measured 2026-10-15, where
-  those ten rows were 10 of 96 in a general search). A `sii` result therefore names its company —
+  those ten rows were 10 of 96 in a general search; `sii` now runs only in `finance`). A `sii` result therefore names its company —
   but a *miss* can still be a synonym (`PKN` for `Orlen`), so issue the ticker and the name. The
   engine logs `dropped N of M` at debug when it drops rows; an empty `sii` result is not proof
   that sii.org.pl has nothing.
 - **A pinned engine that is not loaded runs the default search, and the API
-  reports nothing wrong.** `engines=mojeek news` returns 96 rows from `mwmbl`,
-  `duckduckgo web` and `sii` — a caller who pins one engine and counts results
-  gets someone else's. The *response* is silent about it; `sxq` is what says so,
+  reports nothing wrong.** `engines=mojeek news` returns default-category rows from
+  `mwmbl` and `duckduckgo web` — a caller who pins one engine and counts
+  results gets someone else's. The *response* is silent about it; `sxq` is what says so,
   on stderr, whenever results carry engines you did not pin. See
   `references/categories.md`.
 

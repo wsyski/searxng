@@ -69,7 +69,7 @@ about = {
     "results": "HTML",
 }
 
-categories = ["general"]
+categories = ["finance", "finance-poland"]
 paging = True
 
 base_url = "https://dnarynkow.pl"
