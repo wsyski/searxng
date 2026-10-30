@@ -553,6 +553,23 @@ changes to the base file do not conflict.
     a client misspelt.
   - `searx/webutils.py` `get_json_response` serialises it.
 
+- **Asking for a category this instance does not have is the same trap one
+  level up, and it is quieter.** `parse_category_form` drops an unknown
+  `categories=` name, which leaves the category list empty — and an empty list
+  means the *default* search. Measured 2026-10-30: `categories=finance-polnd`
+  (one letter off `finance-poland`) answered 36 rows from `mwmbl`,
+  `duckduckgo web` and `yahoo`, with `unknown_engines` empty, because no engine
+  was pinned. Nothing in the response mentioned the category at all.
+
+  **`unknown_categories` (2026-10-30)** reports it, the same way and for the
+  same reason: `parse_category_form` is the only place that sees the name, it
+  rides on `SearchQuery.unknown_categories` so `webapp.py` stays untouched, and
+  `get_json_response` serialises it. Both request forms are covered —
+  `categories=a,b` and the `category_<name>=on` checkbox — while
+  `category_<name>=off` is not a request for that category and is not reported.
+  The preferences/cookie path passes no collector: a stale saved category is
+  not something a caller asked for today. The fallback behaviour is unchanged.
+
   This is the piece most worth offering upstream: a reporting-only change to a
   silent failure that affects any API consumer, with no behaviour change and no
   new configuration.

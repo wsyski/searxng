@@ -127,8 +127,12 @@ class TestJSONResponse(SearxTestCase):
     :py:mod:`searx.engines.sii`, how many rows its relevance filter dropped.
     """
 
-    def _payload(self, unknown_engines=(), engine_data=None):
-        search_query = mock.Mock(query='kghm', unknown_engines=list(unknown_engines))
+    def _payload(self, unknown_engines=(), engine_data=None, unknown_categories=()):
+        search_query = mock.Mock(
+            query='kghm',
+            unknown_engines=list(unknown_engines),
+            unknown_categories=list(unknown_categories),
+        )
         result_container = mock.Mock(
             get_ordered_results=lambda: [],
             answers=[],
@@ -146,6 +150,13 @@ class TestJSONResponse(SearxTestCase):
     def test_an_ignored_pin_is_named(self):
         payload = self._payload(unknown_engines=['mojeek news'])
         self.assertEqual(payload['unknown_engines'], ['mojeek news'])
+
+    def test_unknown_categories_is_always_present(self):
+        self.assertEqual(self._payload()['unknown_categories'], [])
+
+    def test_an_ignored_category_is_named(self):
+        payload = self._payload(unknown_categories=['finance-polnd'])
+        self.assertEqual(payload['unknown_categories'], ['finance-polnd'])
 
     def test_engine_data_reaches_the_client(self):
         payload = self._payload(engine_data={'sii': {'dropped_rows': '7', 'site_rows': '10'}})

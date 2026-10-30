@@ -229,6 +229,25 @@ class ServerSideDiagnostics(unittest.TestCase):
         self.assertIn("no engine named", err)
         self.assertNotIn("you did not pin", err)
 
+    def test_an_unknown_category_is_reported(self):
+        payload = {"results": [{"engines": ["mwmbl"]}], "unknown_categories": ["finance-polnd"]}
+        err = self._err(sxq.report_ignored_categories, payload)
+        self.assertIn("finance-polnd", err)
+        self.assertIn("DEFAULT search", err)
+
+    def test_a_known_category_reports_nothing(self):
+        payload = {"results": [{"engines": ["sii"]}], "unknown_categories": []}
+        self.assertEqual(self._err(sxq.report_ignored_categories, payload), "")
+
+    def test_a_stock_instance_without_the_field_is_quiet(self):
+        """The field is a fork addition; its absence must not read as a warning."""
+        self.assertEqual(self._err(sxq.report_ignored_categories, {"results": []}), "")
+
+    def test_main_reports_the_unknown_category(self):
+        payload = {"results": [{"engines": ["mwmbl"]}], "unknown_categories": ["finance-polnd"]}
+        _, err = run_main(["test", "-c", "finance-polnd"], payload)
+        self.assertIn("no category named", err)
+
     def test_a_drop_count_is_reported(self):
         payload = {"engine_data": {"sii": {"dropped_rows": "7", "site_rows": "10"}}}
         err = self._err(sxq.report_engine_data, payload)

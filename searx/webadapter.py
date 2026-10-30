@@ -116,14 +116,30 @@ def parse_timeout(form: Dict[str, str], raw_text_query: RawTextQuery) -> Optiona
         raise SearxParameterException('timeout_limit', timeout_limit) from e
 
 
-def parse_category_form(query_categories: List[str], name: str, value: str) -> None:
+def parse_category_form(
+    query_categories: List[str], name: str, value: str, unknown_categories: Optional[List[str]] = None
+) -> None:
+    """Fold one ``categories`` / ``category_*`` form field into *query_categories*.
+
+    A name this instance does not have is dropped here, and that is the whole
+    silence: ``categories=finance-polnd`` leaves the list empty, so the caller
+    gets the default search and rows from engines it never asked for. Pass
+    *unknown_categories* to collect those names; the cookie/preferences path
+    passes None, where a stale saved category is not something to report.
+    """
     if name == 'categories':
-        query_categories.extend(categ for categ in map(str.strip, value.split(',')) if categ in categories)
+        for categ in map(str.strip, value.split(',')):
+            if categ in categories:
+                query_categories.append(categ)
+            elif categ and unknown_categories is not None:
+                unknown_categories.append(categ)
     elif name.startswith('category_'):
         category = name[9:]
 
         # if category is not found in list, skip
         if category not in categories:
+            if category and value != 'off' and unknown_categories is not None:
+                unknown_categories.append(category)
             return
 
         if value != 'off':
@@ -173,19 +189,21 @@ def get_engineref_from_category_list(  # pylint: disable=invalid-name
 
 def parse_generic(
     preferences: Preferences, form: Dict[str, str], disabled_engines: List[str]
-) -> Tuple[List[EngineRef], List[str]]:
+) -> Tuple[List[EngineRef], List[str], List[str]]:
     """Build the engine list from the ``engines``/``categories`` form fields.
 
-    Returns the engine references to run and the names from ``engines`` that
-    this instance does not have. Those names cannot reach
-    :py:func:`validate_engineref_list` - they are filtered out here, before an
+    Returns the engine references to run, the names from ``engines`` that this
+    instance does not have, and the names from ``categories`` /
+    ``category_*`` it does not have either. Neither kind can reach
+    :py:func:`validate_engineref_list` - both are filtered out here, before an
     :py:obj:`EngineRef` exists for them - so this is the only place that can
     see them, and a caller that is told nothing gets the *default* search
-    instead of the engine it pinned.
+    instead of the engine or category it asked for.
     """
     query_engineref_list = []
     query_categories = []
     unknown_engines = []
+    unknown_categories = []
 
     # set categories/engines
     explicit_engine_list = False
@@ -203,7 +221,7 @@ def parse_generic(
                     query_engineref_list.extend(pd_engines)
                     explicit_engine_list = True
             else:
-                parse_category_form(query_categories, pd_name, pd)
+                parse_category_form(query_categories, pd_name, pd, unknown_categories)
 
     if explicit_engine_list:
         # explicit list of engines with the "engines" parameter in the form
@@ -221,7 +239,7 @@ def parse_generic(
         # declared under the specific categories
         query_engineref_list.extend(get_engineref_from_category_list(query_categories, disabled_engines))
 
-    return query_engineref_list, unknown_engines
+    return query_engineref_list, unknown_engines, unknown_categories
 
 
 def parse_engine_data(form):
@@ -282,6 +300,7 @@ def get_search_query_from_webapp(
         query_lang = preferences.client.locale_tag or 'all'
 
     unknown_engine_names = []
+    unknown_category_names = []
     if not "categories" in preferences.cfg.lock and raw_text_query.specific:
         # if engines are calculated from query,
         # set categories by using that information
@@ -289,7 +308,9 @@ def get_search_query_from_webapp(
     else:
         # otherwise, using defined categories to
         # calculate which engines should be used
-        query_engineref_list, unknown_engine_names = parse_generic(preferences, form, disabled_engines)
+        query_engineref_list, unknown_engine_names, unknown_category_names = parse_generic(
+            preferences, form, disabled_engines
+        )
 
     query_engineref_list = deduplicate_engineref_list(query_engineref_list)
     query_engineref_list, query_engineref_list_unknown, query_engineref_list_notoken = validate_engineref_list(
@@ -313,6 +334,7 @@ def get_search_query_from_webapp(
             engine_data=engine_data,
             redirect_to_first_result=redirect_to_first_result,
             unknown_engines=unknown_engine_names,
+            unknown_categories=unknown_category_names,
         ),
         raw_text_query,
         query_engineref_list_unknown,

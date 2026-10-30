@@ -42,6 +42,7 @@ class SearchQuery:
         engine_data: dict[str, dict[str, str]] | None = None,
         redirect_to_first_result: bool | None = None,
         unknown_engines: list[str] | None = None,
+        unknown_categories: list[str] | None = None,
     ):  # pylint:disable=too-many-arguments
         self.query = query
         self.engineref_list = engineref_list
@@ -59,6 +60,12 @@ class SearchQuery:
         # default search and no notice. Not part of __eq__/__hash__: two queries
         # that run the same engines are the same query whatever a client misspelt.
         self.unknown_engines = unknown_engines or []
+        # Category names the client asked for that this instance does not have.
+        # Same reason as unknown_engines, and a worse silence: an unknown
+        # category leaves query_categories empty, so the DEFAULT search runs and
+        # answers with rows from engines the caller never asked for. Kept out of
+        # __eq__/__hash__ for the same reason.
+        self.unknown_categories = unknown_categories or []
 
         self.locale = None
         if self.lang:
@@ -125,4 +132,5 @@ class SearchQuery:
             self.engine_data,
             self.redirect_to_first_result,
             self.unknown_engines,
+            self.unknown_categories,
         )

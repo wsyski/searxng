@@ -172,6 +172,13 @@ def get_json_response(sq: "SearchQuery", rc: "ResultContainer") -> str:
         # Without this a pin nobody recognises is answered by the *default*
         # search, and the response looks like a successful pinned search.
         'unknown_engines': list(sq.unknown_engines),
+        # Categories the client asked for that this instance does not have.
+        # The louder half of the same silence: an unknown category selects no
+        # engine at all, so the default search runs and the rows come from
+        # engines the caller never asked for - a misspelt `finance-polnd`
+        # answered 36 general-web rows with nothing saying the category was
+        # never honoured.
+        'unknown_categories': list(sq.unknown_categories),
         # The engine -> {key: value} channel (:ref:`engine_data`). The HTML
         # results page round-trips it through hidden form fields; a JSON client
         # could not see it at all, so an engine had no way to report anything

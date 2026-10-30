@@ -34,6 +34,7 @@ INVISIBLE in the output rather than absent from it:
   * `report_empty_time_range` - SearXNG drops every engine that does not declare
     `time_range_support` when a range is set, so a query can run ZERO engines and
     answer with an empty result and an empty `.unresponsive_engines`.
+  * `report_ignored_categories` - a category name the instance does not have
   * `report_engine_data` - an engine can report something about its own response
     through the `engine_data` channel. `sii` publishes how many rows its
     relevance filter dropped, which is the difference between "nothing matched"
@@ -159,6 +160,25 @@ def report_ignored_pins(payload: dict, pinned: str) -> bool:
         file=sys.stderr,
     )
     return True
+
+
+def report_ignored_categories(payload: dict) -> None:
+    """A category this instance does not have is worse than an unknown pin.
+
+    An unknown `categories=` name selects no engine at all, so SearXNG runs the
+    DEFAULT search: `-c finance-polnd` answered 36 rows from mwmbl, duckduckgo
+    web and yahoo. The rows look like a healthy answer from the category that
+    was asked for. The fork names them in `unknown_categories`.
+    """
+    named = [n for n in (payload.get("unknown_categories") or []) if n]
+    if not named:
+        return
+    print(f"\n!! this instance has no category named: {', '.join(sorted(named))}", file=sys.stderr)
+    print(
+        "   SearXNG drops an unknown category and runs the DEFAULT search in its place, "
+        "so these rows are from engines you did not ask for - `sxq --health` lists the real ones.",
+        file=sys.stderr,
+    )
 
 
 def report_engine_data(payload: dict) -> None:
@@ -329,6 +349,7 @@ def main() -> None:
     # JSON document and `sxq ... --json | jq` keeps working.
     if args.engines and not report_ignored_pins(payload, args.engines):
         report_foreign_engines(payload, args.engines)
+    report_ignored_categories(payload)
     report_empty_time_range(payload, args.time_range)
     report_engine_data(payload)
 

@@ -45,6 +45,11 @@ Firecrawl searches through this instance.
   unchanged — the default search still runs — but it is no longer silent. The
   skill's `sxq` reports that field and keeps its own inference for a stock
   instance that lacks it. `DESIGN.md` → Local deployment has the measurements.
+- **Asking for a category this instance does not have is the same trap.** An
+  unknown `categories=` name selects no engine, so the default search runs and
+  `unknown_engines` is empty — nothing names the category. Since 2026-10-30 the
+  response carries `unknown_categories` as well: `categories=finance-polnd`
+  answered 36 general-web rows and now says which name was dropped.
 
 **This instance has no authentication.** It is published on the LAN address so
 LAN clients can reach it, which makes it an open search proxy. Keep it that way
