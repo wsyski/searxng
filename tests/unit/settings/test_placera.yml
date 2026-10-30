@@ -1,0 +1,19 @@
+# This SearXNG setup is used in unit tests
+
+use_default_settings:
+
+  engines:
+    # remove all engines
+    keep_only: []
+
+categories_as_tabs:
+  finance:
+  finance-sweden:
+
+engines:
+
+  - name: placera
+    engine: placera
+    categories: ["finance", "finance-sweden"]
+    shortcut: "pla"
+    disabled: true

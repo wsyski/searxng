@@ -16,8 +16,22 @@ sxq orlen -c finance-poland
 Returns SII's *Spółka tygodnia* note on ORLEN, plus a Książak note that mentions ORLEN inside
 its body (the company is **not** in that title — WordPress `search` matches body text).
 
-The `finance-poland` category fans out to all four engines; SearXNG runs them concurrently and
-caches. The engines are in `finance` and `finance-poland` only, so a default general/news query does not reach them.
+The `finance-poland` category fans out to all four Polish engines; SearXNG runs them concurrently
+and caches. The engines are in `finance` and `finance-poland` only, so a default general/news query
+does not reach them.
+
+For a Swedish name use `-c finance-sweden` (`aktienyheterna`, `placera`), which the Avanza books
+ask for the same way. `-c finance` is the union of both markets and is the right ask when the
+question names no market.
+
+```bash
+sxq granges -c finance-sweden
+```
+
+Both Swedish engines filter the site's own fuzzy matching: a row is kept only when every query
+term appears as a whole word in what the engine can see of it. So an empty answer from
+`finance-sweden` means "nobody wrote about this name", not "the engine is broken" — check
+`engine_data.<name>.site_rows` to tell the two apart.
 
 **Check `.unresponsive_engines` before recording "no coverage".** All three are rate-limited or
 blocking-prone: `sii` returns HTTP 429 after two or three queries in a burst and suspends for

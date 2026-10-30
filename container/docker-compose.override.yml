@@ -48,6 +48,11 @@ services:
       # Opt-in only, disabled in core-config: /search/ is a PAP news index and
       # the site's robots.txt disallows this engine (see its module docstring).
       - ../searx/engines/stooq.py:/usr/local/searxng/searx/engines/stooq.py:ro
+      # Swedish subset (finance + finance-sweden), added 2026-10-30 for the two
+      # Avanza books. Both read a public search surface with no robots.txt or
+      # TDM objection, unlike stooq above.
+      - ../searx/engines/aktienyheterna.py:/usr/local/searxng/searx/engines/aktienyheterna.py:ro
+      - ../searx/engines/placera.py:/usr/local/searxng/searx/engines/placera.py:ro
       # Upstream engine, patched fork-side to read a GitHub token from the
       # environment (see the comment in searx/engines/github.py). Without this
       # mount the container keeps the pristine image copy and the patch is a

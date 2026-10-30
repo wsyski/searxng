@@ -35,11 +35,12 @@ search:
     - html
     - json
 
-# A tab is a selector, not a pipeline: engines in `finance` / `finance-poland`
-# run only when one of those categories is requested (`categories=...`, `-c ...`,
-# or the UI tab). `finance` is international/general finance; `finance-poland`
-# is its Polish subset. They no longer run in default `general` or `news`
-# searches. Adding a key here replaces the default map wholesale
+# A tab is a selector, not a pipeline: engines in `finance` / `finance-poland` /
+# `finance-sweden` run only when one of those categories is requested
+# (`categories=...`, `-c ...`, or the UI tab). `finance` is international/general
+# finance; `finance-poland` and `finance-sweden` are its per-market subsets, and
+# every finance engine carries `finance` plus exactly one of them. They no longer
+# run in default `general` or `news` searches. Adding a key here replaces the default map wholesale
 # (searx/settings_loader.py:138), so every default tab is copied below.
 categories_as_tabs:
   general:
@@ -54,6 +55,7 @@ categories_as_tabs:
   social media:
   finance:
   finance-poland:
+  finance-sweden:
 
 outgoing:
   request_timeout: 6.0
@@ -103,10 +105,21 @@ engines:
     shortcut: lf
     categories: it
     disabled: false
-  # The three finance engines below are in the `finance` tab only (see
-  # categories_as_tabs above). They do not run in default general/news
-  # searches; request the category explicitly (`-c finance`, `!finance`, or the
-  # portfolio job's categories=finance call).
+  # The six finance engines below are in the `finance`, `finance-poland` and
+  # `finance-sweden` tabs (see categories_as_tabs above). They do not run in
+  # default general/news searches; request the category explicitly
+  # (`-c finance-poland`, `-c finance-sweden`, `!finance-poland`, or the
+  # portfolio jobs' categories=finance-poland / categories=finance-sweden
+  # calls). The first four are Polish, the last two Swedish; `finance` is the
+  # union and is what a question with no market in it should ask for. The
+  # per-market split is what keeps each portfolio book stable: a new Swedish
+  # engine joins `finance` and `finance-sweden` and the Polish book does not
+  # change, which is the whole reason the DeGiro job asks for the subset rather
+  # than for `finance`.
+  # A category this instance does not have is NOT reported - a misspelled
+  # `categories=finance-polnd` silently runs the default general search
+  # (measured 2026-10-30: 36 rows from mwmbl/duckduckgo web/yahoo, empty
+  # unknown_engines). unknown_engines covers engine pins only.
   # SII - Stowarzyszenie Inwestorow Indywidualnych (sii.org.pl), Poland's
   # individual-investor association. Per-company commentary that names a GPW
   # ticker in the title, which is what makes it searchable. Not an upstream
@@ -175,6 +188,67 @@ engines:
     engine: stooq
     shortcut: stq
     categories: [finance, finance-poland]
+    disabled: false
+  # --- Swedish subset (`finance` + `finance-sweden`) ---------------------------
+  # Added 2026-10-30 for the two Avanza books (23 and 17 Swedish names), which
+  # had 23 RSS feeds and no way to ask "has anyone written about Gränges".
+  # Aktienyheterna (aktienyheterna.se) - a Swedish retail-equity blog, the
+  # Swedish counterpart of `ksiazak`: a small archive whose worth is coverage of
+  # a name you hold, not volume. Reads the public WordPress REST API. Not an
+  # upstream engine. Verified 2026-10-30.
+  # THE TRAP: WordPress `search` matches a SUBSTRING of the body, so
+  # ?search=granges returns two posts and NEITHER is about Gränges - both are
+  # Spendrups sustainability write-ups naming **Grängesberg**, the town the
+  # brewery was founded in. Two confident rows about a brewery are worse than
+  # none: a gap is visible, a false hit reads as coverage. The engine keeps a row
+  # only when every query term appears as a WHOLE WORD in title, excerpt or body,
+  # and publishes what it dropped through engine_data. Measured site -> kept:
+  # granges 2 -> 0, swedbank 10 -> 10, cloetta 3 -> 3, castellum 10 -> 9,
+  # telia 10 -> 10, apotea 3 -> 3.
+  # Do NOT switch this to the HTML ?s= page for looking more productive: a
+  # nonsense query already returns 5 /blog/ links there (sidebar furniture), so
+  # granges 7 and swedbank 15 are the same REST yield plus a fixed noise floor.
+  # robots.txt (2026-10-30): `User-agent: *` disallows only /wp-admin/, no
+  # AI-agent rule; /.well-known/tdmrep.json is 404 and no page carries a
+  # tdm-reservation meta.
+  - name: aktienyheterna
+    engine: aktienyheterna
+    categories: [finance, finance-sweden]
+    shortcut: akn
+    disabled: false
+  # Placera (placera.se) - Avanza's editorial site: /nyheter, /analys and the
+  # /pressmeddelanden wire, archive back to 2006. The one Swedish source here
+  # that can answer "has anyone EVER written about this holding". Not an
+  # upstream engine. Verified 2026-10-30.
+  # The path is /search?q=, NOT /sok: /sok?q=, /sok/<q> and /soek?q= all 404,
+  # and /api/search answers 200 with {"articles":[],"authors":[],"tags":[]} for
+  # every parameter name tried (query, q, s, term, searchTerm, text) - an API
+  # that is always empty and never an error, which looks healthier than a 404.
+  # The site ranks near-misses into the page, so the engine filters: one
+  # /search page gave swedbank 100 rows, cloetta 100, granges 96 (including
+  # press releases about *grants* and board *changes*) and the nonsense query
+  # zzqxvv 1. A row is kept only when every term is a whole word in its title or
+  # URL slug. No paging: &page=2, &p=2 and &offset=100 each return the same
+  # 100-row page. The date comes from the slug (-YYYY-MM-DD editorial,
+  # -YYYYMMDD wire) because the rendered date carries no year.
+  # robots.txt (2026-10-30): `User-agent: *` is `Allow: /` with /admin/
+  # disallowed; a second group naming ClaudeBot, Anthropic-ai, GPTBot, CCBot,
+  # PerplexityBot and others disallows only /_next/image, /media/ and
+  # /api/media/file/. A named group REPLACES `*`, so /search is allowed under
+  # either, and this engine's SearXNG/1.0 matches no named group. No TDM
+  # reservation (tdmrep.json 404, no meta, no X-Robots-Tag). Unlike `stooq`
+  # above, nothing here needed an operator exception.
+  # Rejected Swedish candidates, so they are not rediscovered: mfn.se
+  # (Disallow: *.rss$), di.se and privataaffarer.se (Bonnier - ClaudeBot
+  # blocked, §15a TDM reservation) are an operator decision like stooq, not an
+  # engine author's; aktiespararna.se/sok?q= is the sii ?q= trap exactly (200,
+  # 234,7xx bytes and the same five term hits for granges, swedbank AND a
+  # nonsense query - the search is client-side and no backing API is named in
+  # the markup); borsvarlden.se serves a certificate with no matching name.
+  - name: placera
+    engine: placera
+    categories: [finance, finance-sweden]
+    shortcut: pla
     disabled: false
   # News: duckduckgo news, wikinews (default on), qwant news and bing news answer.
   # None of the first three supports time_range, and SearXNG drops an engine that

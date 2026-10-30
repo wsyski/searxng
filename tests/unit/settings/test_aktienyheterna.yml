@@ -1,0 +1,19 @@
+# This SearXNG setup is used in unit tests
+
+use_default_settings:
+
+  engines:
+    # remove all engines
+    keep_only: []
+
+categories_as_tabs:
+  finance:
+  finance-sweden:
+
+engines:
+
+  - name: aktienyheterna
+    engine: aktienyheterna
+    categories: ["finance", "finance-sweden"]
+    shortcut: "akn"
+    disabled: true

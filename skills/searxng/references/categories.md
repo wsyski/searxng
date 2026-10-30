@@ -21,7 +21,7 @@ provenance. These four were re-run on 2026-10-15 because the work that day could
 `sii` also changed behaviour rather than count: it drops any row missing a query term. It used
 to contribute to `general`; since 2026-10-24 it is `finance` only.
 
-## finance and finance-poland (new 2026-10-24)
+## finance, finance-poland and finance-sweden
 
 `sii`, `dna rynkow`, `ksiazak` and `stooq` moved out of `general`/`news` into **both** `finance`
 (international/general finance) and `finance-poland` (the Polish subset). They run only when one
@@ -32,6 +32,25 @@ job's explicit `categories=finance-poland` call). Measured 2026-10-24 after stoo
 above are pre-move — subtract these engines from any post-move count. The earlier `polish-equity`
 idea is realized as `finance-poland`: the hyphenated name sorts beside `finance` and works in
 `-c`/API/tab, but `!finance-poland` is not a bang (SearXNG rewrites `-` in bangs).
+
+`finance-sweden` (new 2026-10-30) is the Swedish subset, added for the two Avanza books, which
+carry ~23 and ~17 Swedish names and had 23 RSS feeds but no way to ask "has anyone written about
+Gränges". It holds `aktienyheterna` (`!akn`) and `placera` (`!pla`), both also in `finance`, so
+`finance` is now the union of the two markets rather than a synonym for the Polish set. Measured
+2026-10-30:
+
+```
+-c finance-sweden  q=granges   ->  65 rows   placera 100 site rows, 35 dropped; aktienyheterna 2 site, 2 dropped
+-c finance-sweden  q=swedbank  -> 109 rows   placera 99 site, 0 dropped; aktienyheterna 10 site, 0 dropped
+-c finance-sweden  q=cloetta   ->  84 rows   placera 100 site, 19 dropped; aktienyheterna 3 site, 0 dropped
+```
+
+Both engines publish `dropped_rows`/`site_rows` through `engine_data`, as `sii` does, so a JSON
+consumer can tell "the engine ran and found nothing" from "the engine did not run" — the
+`engine_data.<name>` key is absent in the second case. `granges` is the instructive query: both
+sources rank near-misses in (placera returns press releases about *grants*; aktienyheterna
+returns two Spendrups posts naming **Grängesberg**, a town), and both engines drop them, so
+aktienyheterna correctly answers zero for Gränges.
 
 ## Opt-in: stooq
 
@@ -227,9 +246,25 @@ changed is that the response no longer pretends it did what you asked.
 an instance that does not have it (a stock SearXNG), so it still warns either way, on stderr,
 including under `--json`.
 
+### The same silence, one level up: an unknown CATEGORY
+
+`categories=` is filtered the same way, in `parse_category_form`, and the consequence is worse:
+an unknown category selects no engine at all, so the default search runs and `unknown_engines`
+stays empty — nothing in the response mentions the category. Measured 2026-10-30:
+
+```
+categories=finance-poland ->  21 rows from sii, stooq, dna rynkow
+                              "unknown_categories": []
+categories=finance-polnd  ->  36 rows from mwmbl, duckduckgo web, yahoo
+                              "unknown_categories": ["finance-polnd"]
+```
+
+Both forms are covered: `categories=a,b` and the `category_<name>=on` checkbox field. Switching
+an unknown category *off* (`category_x=off`) is not a request for it and is not reported.
+
 The server-side change lives in `searx/webadapter.py` (`parse_generic` collects the names it
 filters out — they never reach `validate_engineref_list`, which is why upstream could not report
-them), `searx/search/models.py` (`SearchQuery.unknown_engines`) and `searx/webutils.py`
+them), `searx/search/models.py` (`SearchQuery.unknown_engines`, `.unknown_categories`) and `searx/webutils.py`
 (`get_json_response`). All three are bind-mounted into the container; see
 `container/docker-compose.override.yml` for why `searx/webapp.py` is not.
 

@@ -26,6 +26,7 @@ SearXNG runs from `/opt/playground/searxng`, container `searxng-core`, published
 ```bash
 sxq "liferay 7.4 upgrade" -n 5
 sxq orlen -c finance-poland
+sxq granges -c finance-sweden
 sxq "AI regulation" -c news
 sxq --health
 ```
@@ -91,6 +92,17 @@ stderr on a pinned or ranged query — it is the only place any of those failure
   on every `sii` response including a zero one, so `engine_data.sii` being present is itself the
   statement "sii ran". `sxq` prints a stderr warning when the count is non-zero. An empty `sii`
   result is not proof that sii.org.pl has nothing — check the count before concluding it.
+- **The Swedish subset is `finance-sweden`, and it filters the same way.** `aktienyheterna`
+  (`!akn`, the WordPress REST API) and `placera` (`!pla`, Avanza's editorial site, archive back to
+  2006) are in `finance` and `finance-sweden`; the two Avanza books ask for the subset once a day.
+  Both sites rank near-misses into their own result page, so both engines keep a row only when
+  every query term is a whole word in what they can see of it, and both publish
+  `engine_data.<name>.dropped_rows` / `.site_rows` on every response. `granges` is the query that
+  shows why: placera ranks in press releases about *grants* and board *changes*, and
+  aktienyheterna's `search=granges` returns two Spendrups posts naming **Grängesberg** — a town,
+  not the company. Unfiltered, "has anyone written about Gränges" is answered "yes, twice". So
+  read `site_rows` before reading an empty answer as a broken engine.
+  `finance` is now the **union** of both markets, not a synonym for the Polish set.
 - **A pinned engine that is not loaded runs the default search, and the API
   reports nothing wrong.** `engines=mojeek news` returns default-category rows from
   `mwmbl` and `duckduckgo web` — a caller who pins one engine and counts
@@ -98,6 +110,12 @@ stderr on a pinned or ranged query — it is the only place any of those failure
   alongside `unresponsive_engines` (fork-side, 2026-10-30). The fallback behaviour is unchanged:
   the default search still runs. `sxq` reports that field, and still infers the same thing from
   the per-row `engines` on a stock instance that lacks it. See `references/categories.md`.
+- **A category this instance does not have does the same thing, and louder.** An unknown
+  `categories=` name selects no engine, so the DEFAULT search runs: `-c finance-polnd` (a
+  misspelt `finance-poland`) answered 36 rows from `mwmbl`, `duckduckgo web` and `yahoo`, and
+  `unknown_engines` was empty because no *engine* was pinned. **The response now names it** —
+  `unknown_categories` in the JSON (fork-side, 2026-10-30). `sxq` reports it on stderr, under
+  `--json` too.
 
 ## When to use this
 
