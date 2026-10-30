@@ -2,7 +2,7 @@
 # pylint: disable=missing-module-docstring
 
 from collections import defaultdict
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Literal, Optional, Tuple, cast
 from searx.exceptions import SearxParameterException
 from searx.webutils import VALID_LANGUAGE_CODE
 from searx.query import RawTextQuery
@@ -61,7 +61,7 @@ def parse_lang(preferences: Preferences, form: Dict[str, str], raw_text_query: R
     if len(raw_text_query.languages):
         query_lang = raw_text_query.languages[-1]
     elif 'language' in form:
-        query_lang = form.get('language')
+        query_lang = form['language']
     else:
         query_lang = preferences.get_value('language')
 
@@ -72,16 +72,16 @@ def parse_lang(preferences: Preferences, form: Dict[str, str], raw_text_query: R
     return query_lang
 
 
-def parse_safesearch(preferences: Preferences, form: Dict[str, str]) -> int:
+def parse_safesearch(preferences: Preferences, form: Dict[str, str]) -> Literal[0, 1, 2]:
     if "safesearch" in preferences.cfg.lock:
         return preferences.get_value('safesearch')
 
     if 'safesearch' in form:
-        query_safesearch = form.get('safesearch')
+        query_safesearch_str = form['safesearch']
         # first check safesearch
-        if not query_safesearch.isdigit():
-            raise SearxParameterException('safesearch', query_safesearch)
-        query_safesearch = int(query_safesearch)
+        if not query_safesearch_str.isdigit():
+            raise SearxParameterException('safesearch', query_safesearch_str)
+        query_safesearch = int(query_safesearch_str)
     else:
         query_safesearch = preferences.get_value('safesearch')
 
@@ -89,16 +89,18 @@ def parse_safesearch(preferences: Preferences, form: Dict[str, str]) -> int:
     if query_safesearch < 0 or query_safesearch > 2:
         raise SearxParameterException('safesearch', query_safesearch)
 
-    return query_safesearch
+    # the two checks above are the narrowing; cast so SearchQuery's Literal
+    # parameter is satisfied without re-validating the same value a third time
+    return cast(Literal[0, 1, 2], query_safesearch)
 
 
-def parse_time_range(form: Dict[str, str]) -> Optional[str]:
+def parse_time_range(form: Dict[str, str]) -> Optional[Literal["day", "week", "month", "year"]]:
     query_time_range = form.get('time_range')
     # check time_range
     query_time_range = None if query_time_range in ('', 'None') else query_time_range
     if query_time_range not in (None, 'day', 'week', 'month', 'year'):
         raise SearxParameterException('time_range', query_time_range)
-    return query_time_range
+    return cast(Optional[Literal["day", "week", "month", "year"]], query_time_range)
 
 
 def parse_timeout(form: Dict[str, str], raw_text_query: RawTextQuery) -> Optional[float]:
@@ -169,9 +171,21 @@ def get_engineref_from_category_list(  # pylint: disable=invalid-name
     return result
 
 
-def parse_generic(preferences: Preferences, form: Dict[str, str], disabled_engines: List[str]) -> List[EngineRef]:
+def parse_generic(
+    preferences: Preferences, form: Dict[str, str], disabled_engines: List[str]
+) -> Tuple[List[EngineRef], List[str]]:
+    """Build the engine list from the ``engines``/``categories`` form fields.
+
+    Returns the engine references to run and the names from ``engines`` that
+    this instance does not have. Those names cannot reach
+    :py:func:`validate_engineref_list` - they are filtered out here, before an
+    :py:obj:`EngineRef` exists for them - so this is the only place that can
+    see them, and a caller that is told nothing gets the *default* search
+    instead of the engine it pinned.
+    """
     query_engineref_list = []
     query_categories = []
+    unknown_engines = []
 
     # set categories/engines
     explicit_engine_list = False
@@ -179,11 +193,12 @@ def parse_generic(preferences: Preferences, form: Dict[str, str], disabled_engin
         # parse the form only if the categories are not locked
         for pd_name, pd in form.items():  # pylint: disable=invalid-name
             if pd_name == 'engines':
-                pd_engines = [
-                    EngineRef(engine_name, engines[engine_name].categories[0])
-                    for engine_name in map(str.strip, pd.split(','))
-                    if engine_name in engines
-                ]
+                pd_engines = []
+                for engine_name in map(str.strip, pd.split(',')):
+                    if engine_name in engines:
+                        pd_engines.append(EngineRef(engine_name, engines[engine_name].categories[0]))
+                    elif engine_name:
+                        unknown_engines.append(engine_name)
                 if pd_engines:
                     query_engineref_list.extend(pd_engines)
                     explicit_engine_list = True
@@ -206,7 +221,7 @@ def parse_generic(preferences: Preferences, form: Dict[str, str], disabled_engin
         # declared under the specific categories
         query_engineref_list.extend(get_engineref_from_category_list(query_categories, disabled_engines))
 
-    return query_engineref_list
+    return query_engineref_list, unknown_engines
 
 
 def parse_engine_data(form):
@@ -266,6 +281,7 @@ def get_search_query_from_webapp(
     if query_lang == 'auto':
         query_lang = preferences.client.locale_tag or 'all'
 
+    unknown_engine_names = []
     if not "categories" in preferences.cfg.lock and raw_text_query.specific:
         # if engines are calculated from query,
         # set categories by using that information
@@ -273,12 +289,16 @@ def get_search_query_from_webapp(
     else:
         # otherwise, using defined categories to
         # calculate which engines should be used
-        query_engineref_list = parse_generic(preferences, form, disabled_engines)
+        query_engineref_list, unknown_engine_names = parse_generic(preferences, form, disabled_engines)
 
     query_engineref_list = deduplicate_engineref_list(query_engineref_list)
     query_engineref_list, query_engineref_list_unknown, query_engineref_list_notoken = validate_engineref_list(
         query_engineref_list, preferences
     )
+    # The two halves of "asked for, not run": names filtered out in
+    # parse_generic (the ``engines`` field) and refs that reached
+    # validate_engineref_list but name no loaded engine (a ``!bang``).
+    unknown_engine_names.extend(ref.name for ref in query_engineref_list_unknown)
 
     return (
         SearchQuery(
@@ -292,6 +312,7 @@ def get_search_query_from_webapp(
             external_bang=external_bang,
             engine_data=engine_data,
             redirect_to_first_result=redirect_to_first_result,
+            unknown_engines=unknown_engine_names,
         ),
         raw_text_query,
         query_engineref_list_unknown,

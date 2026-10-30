@@ -42,7 +42,12 @@ sxq --health
 
 Quote multi-word queries: `sxq react hooks` is two arguments and the second is rejected.
 
-For fields `sxq` does not print (`answers`, `infoboxes`, `publishedDate`, raw `score`):
+`sxq` prints `.answers` as well as `.results`, with a leading `=`. Some categories answer only
+there — `weather`, `currency`, `define` and `translate` put their whole output in `.answers` and
+never fill `.results`, which is why they were once mistaken for dead categories. `translate`
+needs the `from-to term` form: `sxq "en-pl dog" -c translate`, not a bare word.
+
+For fields `sxq` does not print (`infoboxes`, `publishedDate`, raw `score`):
 
 ```bash
 SX="${SEARXNG_URL:-http://192.168.1.100:8888}"
@@ -61,32 +66,38 @@ It is the single most consequential thing on this page.
 `Suspended: …` means the engine asked too fast, **not** that the site blocks this host —
 opposite diagnoses, and `references/categories.md` has the table.
 
-`sxq` writes two further diagnostics to **stderr**, including under `--json`, so stdout stays a
-clean document and `sxq … --json | jq` keeps working: one when results carry engines you did not
-pin, one when a `--time-range` came back empty with nothing failing. Both are described below. Do
-not silence stderr on a pinned or ranged query — it is the only place either failure is visible.
+`sxq` writes three further diagnostics to **stderr**, including under `--json`, so stdout stays a
+clean document and `sxq … --json | jq` keeps working: one when a pin was ignored, one when a
+`--time-range` came back empty with nothing failing, one when an engine reported something about
+its own response (today only `sii`'s drop count). All three are described below. Do not silence
+stderr on a pinned or ranged query — it is the only place any of those failures is visible.
 
 ## Four behaviours that mislead
 
-- **`--time-range` with `-c news` is empty in practice.** Only `bing news` has `time_range_support`;
-  the other three are dropped when a range is set. Measured 2026-10-24: day and week both returned
-  zero rows, with `bing news` reporting a parsing error. Do not pass `--tbs` on portfolio news
-  sweeps; take a window and filter on `publishedDate` instead. `sxq`'s "no news engine supports the
-  range" warning no longer covers this case, because `bing news` does claim support.
+- **`--time-range` with `-c news` runs exactly one engine.** Only `bing news` has
+  `time_range_support`; the other three are dropped when a range is set, so a range narrows the
+  category to a single source. Re-measured 2026-10-30, q=kghm: 4 rows at `day`, 7 at `week`, 8 at
+  `month`, all `bing news`, against 34 rows unranged from three engines. It **works** — an earlier
+  2026-10-24 reading of zero rows and a `bing news` parsing error does not reproduce. The cost is
+  breadth, not correctness: a ranged `-c news` is `bing news` alone, so take a window and filter on
+  `publishedDate` when you want all four sources.
 - **A hit does not mean the company is in the title.** Książak reads the WordPress REST API,
   whose `search` matches body text, so `orlen` returns a note about another company.
 - **A `sii` hit carries every query term.** sii.org.pl ORs the terms, so `zzqxv term` returns the
   same ten rows as `term`; the engine drops any row missing a term (measured 2026-10-15, where
   those ten rows were 10 of 96 in a general search; `sii` now runs only in `finance`). A `sii` result therefore names its company —
   but a *miss* can still be a synonym (`PKN` for `Orlen`), so issue the ticker and the name. The
-  engine logs `dropped N of M` at debug when it drops rows; an empty `sii` result is not proof
-  that sii.org.pl has nothing.
+  engine publishes the count in the response: `engine_data.sii.dropped_rows` and `.site_rows`,
+  on every `sii` response including a zero one, so `engine_data.sii` being present is itself the
+  statement "sii ran". `sxq` prints a stderr warning when the count is non-zero. An empty `sii`
+  result is not proof that sii.org.pl has nothing — check the count before concluding it.
 - **A pinned engine that is not loaded runs the default search, and the API
   reports nothing wrong.** `engines=mojeek news` returns default-category rows from
   `mwmbl` and `duckduckgo web` — a caller who pins one engine and counts
-  results gets someone else's. The *response* is silent about it; `sxq` is what says so,
-  on stderr, whenever results carry engines you did not pin. See
-  `references/categories.md`.
+  results gets someone else's. **The response now names the pin** — `unknown_engines` in the JSON,
+  alongside `unresponsive_engines` (fork-side, 2026-10-30). The fallback behaviour is unchanged:
+  the default search still runs. `sxq` reports that field, and still infers the same thing from
+  the per-row `engines` on a stock instance that lacks it. See `references/categories.md`.
 
 ## When to use this
 

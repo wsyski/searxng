@@ -233,18 +233,30 @@ def response(resp) -> EngineResults:
             )
         )
 
+    # The filter's cost is otherwise invisible: a query whose rows all use a
+    # synonym (`PKN` for `Orlen`) comes back empty, and "empty" and "correctly
+    # filtered" look the same from outside.
+    #
+    # engine_data, not a log line, because the question is asked from outside:
+    # the consumer recording source coverage reads the JSON response and cannot
+    # read this instance's log, and `general.debug` is false here so a
+    # logger.debug would not be written at all. The counts are published on
+    # every response, 0 included, so `engine_data.sii` being present is itself
+    # the statement "sii ran" - which is the other half of the ambiguity, since
+    # an engine that was dropped or suspended contributes no key here.
+    #
+    # The log line stays at debug and keeps its own rationale: a synonym miss is
+    # an accepted outcome of the design rather than a fault, and a warning would
+    # train people to ignore the ones that matter.
+    kept = len(results)
+    results.add(results.types.LegacyResult(engine_data=str(dropped), key="dropped_rows"))
+    results.add(results.types.LegacyResult(engine_data=str(dropped + kept), key="site_rows"))
+
     if dropped:
-        # The filter's cost is otherwise invisible: a query whose rows all use a
-        # synonym (`PKN` for `Orlen`) comes back empty, and "empty" and
-        # "correctly filtered" look the same from outside. Debug, not warning -
-        # a synonym miss is an accepted outcome of the design rather than a
-        # fault, and a warning here would train people to ignore the ones that
-        # matter. The query is named because it is the other half of the
-        # question an operator is asking.
         logger.debug(
             "dropped %d of %d row(s): none carried every term of %r",
             dropped,
-            dropped + len(results),
+            dropped + kept,
             resp.search_params.get("query", ""),
         )
 

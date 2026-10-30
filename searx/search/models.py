@@ -3,6 +3,7 @@
 
 import typing
 import babel
+import babel.core  # babel does not re-export .core, and UnknownLocaleError lives there
 
 
 class EngineRef:
@@ -40,6 +41,7 @@ class SearchQuery:
         external_bang: str | None = None,
         engine_data: dict[str, dict[str, str]] | None = None,
         redirect_to_first_result: bool | None = None,
+        unknown_engines: list[str] | None = None,
     ):  # pylint:disable=too-many-arguments
         self.query = query
         self.engineref_list = engineref_list
@@ -51,6 +53,12 @@ class SearchQuery:
         self.external_bang = external_bang
         self.engine_data = engine_data or {}
         self.redirect_to_first_result = redirect_to_first_result
+        # Engine names the client asked for by name that this instance does not
+        # have. They are dropped from engineref_list - there is nothing to run -
+        # and kept here so the response can say so instead of answering with the
+        # default search and no notice. Not part of __eq__/__hash__: two queries
+        # that run the same engines are the same query whatever a client misspelt.
+        self.unknown_engines = unknown_engines or []
 
         self.locale = None
         if self.lang:
@@ -116,4 +124,5 @@ class SearchQuery:
             self.external_bang,
             self.engine_data,
             self.redirect_to_first_result,
+            self.unknown_engines,
         )

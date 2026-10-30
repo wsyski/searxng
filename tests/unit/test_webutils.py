@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # pylint: disable=missing-module-docstring,disable=missing-class-docstring,invalid-name
 
+import json
+
 import mock
 from parameterized.parameterized import parameterized
 from searx import webutils
@@ -112,3 +114,42 @@ class TestNewHmac(SearxTestCase):
         data = b'http://example.com'
         res = webutils.new_hmac('secret', data)
         self.assertEqual(res, '23e2baa2404012a5cc8e4a18b4aabf0dde4cb9b56f679ddc0fd6d7c24339d819')
+
+
+class TestJSONResponse(SearxTestCase):
+    """The JSON response has to say what it did not do.
+
+    Two things were invisible to a JSON client: an ``engines=`` pin this
+    instance does not have (dropped, with the *default* search run in its
+    place), and the ``engine_data`` channel, which the HTML results page
+    round-trips through hidden form fields and the JSON encoder simply omitted -
+    so an engine had no way to report a paging cursor or, in
+    :py:mod:`searx.engines.sii`, how many rows its relevance filter dropped.
+    """
+
+    def _payload(self, unknown_engines=(), engine_data=None):
+        search_query = mock.Mock(query='kghm', unknown_engines=list(unknown_engines))
+        result_container = mock.Mock(
+            get_ordered_results=lambda: [],
+            answers=[],
+            corrections=set(),
+            suggestions=set(),
+            infoboxes=[],
+            unresponsive_engines=set(),
+            engine_data=engine_data or {},
+        )
+        return json.loads(webutils.get_json_response(search_query, result_container))
+
+    def test_unknown_engines_is_always_present(self):
+        self.assertEqual(self._payload()['unknown_engines'], [])
+
+    def test_an_ignored_pin_is_named(self):
+        payload = self._payload(unknown_engines=['mojeek news'])
+        self.assertEqual(payload['unknown_engines'], ['mojeek news'])
+
+    def test_engine_data_reaches_the_client(self):
+        payload = self._payload(engine_data={'sii': {'dropped_rows': '7', 'site_rows': '10'}})
+        self.assertEqual(payload['engine_data'], {'sii': {'dropped_rows': '7', 'site_rows': '10'}})
+
+    def test_engine_data_is_an_object_even_when_empty(self):
+        self.assertEqual(self._payload()['engine_data'], {})

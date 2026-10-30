@@ -81,16 +81,37 @@ add it to `-c news` — Firecrawl's news searches use that category too.
 
 ## What returns nothing, and why
 
-| Category | Engines | Returns | Reason |
-|---|---|---|---|
-| `weather` | 1 | **0** | `wttr.in` fails; it is the only engine |
-| `shopping` | 0 | **0** | `geizhals` is the only one, and it fails |
-| `currency` | 1 | **0** | `currency_convert` returned nothing |
-| `define` | 1 | **0** | single engine returned nothing |
-| `translate` | 3 | **0** | no engine answered |
+**Corrected 2026-10-30. The five rows that used to stand here were wrong, and the fault was in
+the measuring tool, not the instance.** Answerer-style engines — the `online_currency` and
+`online_dictionary` processors, and the weather engines — put their entire output in
+**`.answers`**, not `.results`. The probe read `.results` alone, saw an empty array, and four
+live categories were written down as dead.
 
-An empty result in any of these means *the engines are not answering*, not that the subject
-does not exist. Check `.unresponsive_engines` before concluding anything.
+Re-measured 2026-10-30, counting both arrays:
+
+| Category | Query | `.results` | `.answers` | Verdict |
+|---|---|---|---|---|
+| `weather` | warszawa | 0 | **1** | **live** — `duckduckgo weather` gives a full forecast; `openmeteo` answers too but geocodes "warszawa" to Ohio |
+| `currency` | 100 EUR to PLN | 0 | **1** | **live** — `100.0 EUR = 438.85 PLN` |
+| `define` | serendipity | 0 | **3** | **live** — `wordnik` |
+| `translate` | en-pl dog | 0 | **3** | **live** — `dictzone`, `mymemory translated` |
+| `translate` | dog | 0 | 0 | not a fault: the processor needs the `from-to term` form |
+| `shopping` | laptop | 0 | 0 | **genuinely dead** — `geizhals` is the only engine and it answers "access denied" |
+
+`sxq` now prints `.answers`, so an answer is no longer reported as "no results". A category
+that answers only in `.answers` is normal, not a symptom.
+
+One engine in each of three of these fails, and all three are **deliberately left enabled**
+(see `container/core-config/settings.yml`): `wttr.in` (parsing error, in `weather` and `other`),
+`mozhi` (HTTP connection error, in `translate`) and `geizhals` (access denied, the sole
+`shopping` engine). None of them is in `general`, `news` or any tab, so none costs latency on an
+ordinary query — and each one's appearance in `.unresponsive_engines` is the only thing that
+separates "this category is broken" from "this category found nothing". Disabling `geizhals`
+would make `shopping` answer 0 results with an **empty** `.unresponsive_engines`, which is worse
+than the failure it hides.
+
+An empty result in any category still means *check `.unresponsive_engines` first* — and now also
+*check `.answers`*.
 
 ## Engines observed failing
 
@@ -99,11 +120,11 @@ Captured in the same run, and **not** verified individually — these are single
 - `yahoo` in `general` — **but it re-tested clean 3/3 when pinned.** Transient.
 - `gitlab` in `repos` — reproduced across three queries earlier. **Since disabled** (2026-10-15),
   so this is history, not something you can reproduce by querying.
-- `wttr.in` — in both `weather` and `other`
+- `wttr.in` — in both `weather` and `other`; still failing on 2026-10-30 (parsing error)
 - 4 of 6 image engines: `bing images`, `brave.images`, `duckduckgo images`, `google cse images`
 - 4 of 9 video engines: `bing videos`, `brave.videos`, `google videos`, `vimeo`
 - `kickass` (files), `flaticon` (icons), `metacpan` (packages), `openalex` (scientific
-  publications), `searchmysite` (blogs), `geizhals` (shopping), `shopify stock` (other)
+  publications), `searchmysite` (blogs), `geizhals` (shopping, still failing 2026-10-30), `shopify stock` (other)
 - `github` — suspended later the same day by over-querying, not failing. See the next section.
 
 `yahoo` is the reason to distrust a one-shot matrix: it appeared broken in one sample and
@@ -187,18 +208,59 @@ from the selection and falls back to the default categories. Measured 2026-10-15
 | `startpage news` (inactive upstream) | 97 | the same set plus `yahoo` |
 | `bing news` | 10 | `bing news` 10 |
 
-Nothing in the response says the pin was ignored. `sxq` compares the `engines` on each result
-against the pin and warns on stderr when they differ, including under `--json`.
+**Fixed fork-side 2026-10-30: the response now says so.** `GET /search?format=json` carries a
+`unknown_engines` array alongside `unresponsive_engines`, naming every `engines=` pin this
+instance does not have. Re-measured 2026-10-30:
+
+```
+engines=mojeek news  ->  36 rows from mwmbl, yahoo, duckduckgo web
+                         "unknown_engines": ["mojeek news"]
+engines=bing news    ->   9 rows from bing news
+                         "unknown_engines": []
+```
+
+The *behaviour* is unchanged and deliberately so — the default search still runs in place of an
+unknown pin, because that is upstream's semantics and changing it is a separate argument. What
+changed is that the response no longer pretends it did what you asked.
+
+`sxq` prefers that field and falls back to comparing each result's `engines` against the pin on
+an instance that does not have it (a stock SearXNG), so it still warns either way, on stderr,
+including under `--json`.
+
+The server-side change lives in `searx/webadapter.py` (`parse_generic` collects the names it
+filters out — they never reach `validate_engineref_list`, which is why upstream could not report
+them), `searx/search/models.py` (`SearchQuery.unknown_engines`) and `searx/webutils.py`
+(`get_json_response`). All three are bind-mounted into the container; see
+`container/docker-compose.override.yml` for why `searx/webapp.py` is not.
 
 ## `--time-range` needs an engine that supports it
 
 Measurements; `SKILL.md` carries the behaviour guidance.
 
 SearXNG **drops** every engine whose `time_range_support` is False when a range is set. In `news`
-that is `duckduckgo news`, `qwant news` and `wikinews`; only `bing news` remains. Re-measured
-2026-10-24: `-c news --time-range day` and `week` both returned **zero** rows; `bing news` answered
-with a parsing error (empty response body) and the others were dropped. That is a healthy-looking
-empty, so the portfolio's Firecrawl news sweeps omit `tbs` for now.
+that is `duckduckgo news`, `qwant news` and `wikinews`; only `bing news` remains.
+
+**Re-measured 2026-10-30, q=kghm — this supersedes the 2026-10-24 reading below:**
+
+| probe | rows | engines | unresponsive |
+|---|---|---|---|
+| `-c news` (no range) | 34 | `duckduckgo news` 27, `bing news` 9, `wikinews` 5 | `qwant news`: access denied |
+| `-c news --time-range day` | 4 | `bing news` 4 | `qwant news` suspended |
+| `-c news --time-range week` | 7 | `bing news` 7 | `qwant news` suspended |
+| `-c news --time-range month` | 8 | `bing news` 8 | `qwant news` suspended |
+| `-e "bing news"` (no range) | 9 | `bing news` 9 | — |
+
+`bing news` is **healthy**, and `-c news --time-range` runs it and returns rows.
+
+The 2026-10-24 reading recorded here — *zero* rows at `day` and `week`, with `bing news`
+answering a parsing error on an empty response body — **does not reproduce**. It contradicted the
+2026-10-15 note in `container/core-config/settings.yml` (10 unranged / 5 month / 3 week), and the
+2026-10-30 set agrees with that note in kind. Read the 10-24 figure as a transient upstream blip,
+not as the state of this instance; it is kept named here only so nobody re-derives it from an old
+copy of this file.
+
+The portfolio's Firecrawl news sweeps still omit `tbs`. That is a decision on the portfolio side
+and is not changed by this measurement — but the reason given for it no longer holds.
 
 `bing news` needs `enable_http3: false` in `container/core-config/settings.yml`, because
 `bing_news.py` asks for HTTP/3 and UDP/443 is filtered on this host. `sxq` warns on stderr when a

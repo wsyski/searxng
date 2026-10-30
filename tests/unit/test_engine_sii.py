@@ -29,6 +29,23 @@ from searx.search.processors import OnlineParamTypes
 from tests import SearxTestCase
 
 
+def _rows(results):
+    """The article rows, with the engine_data entries filtered out.
+
+    ``sii.response`` publishes its drop count through the ``engine_data``
+    channel, which travels as entries in the same result list (see
+    ``deviantart.py`` for the upstream precedent). They are not rows, so a row
+    count has to say which it means.
+    """
+    return [r for r in results if "engine_data" not in r]
+
+
+def _engine_data(results):
+    """The ``{key: value}`` pairs the engine published, as the result container
+    would collect them (``searx/results.py``, the ``engine_data`` branch)."""
+    return {r["key"]: r["engine_data"] for r in results if "engine_data" in r}
+
+
 def _first(results):
     """The first row, narrowed to what this engine actually builds.
 
@@ -37,7 +54,7 @@ def _first(results):
     ``LegacyResult``, which is what ``sii.response`` adds. Narrowing once here
     keeps every assertion below reading as an assertion.
     """
-    return cast(LegacyResult, results[0])
+    return cast(LegacyResult, _rows(results)[0])
 
 
 def _params(**extra: Any) -> OnlineParamTypes:
@@ -156,7 +173,7 @@ class SiiRequestTests(_SiiEngineTestCase):
 
     def test_a_404_is_an_empty_result_not_a_failure(self):
         results = self.engine.response(_resp("", status_code=404))
-        self.assertEqual(len(results), 0)
+        self.assertEqual(len(_rows(results)), 0)
 
     def test_any_other_error_status_still_raises(self):
         """404 is special. A 500 must not be swallowed into 'no results'."""
@@ -201,14 +218,14 @@ class SiiRequestTests(_SiiEngineTestCase):
 class SiiParsingTests(_SiiEngineTestCase):
 
     def test_an_empty_shell_parses_to_nothing(self):
-        self.assertEqual(len(self.engine.response(_resp(EMPTY_SHELL))), 0)
+        self.assertEqual(len(_rows(self.engine.response(_resp(EMPTY_SHELL)))), 0)
 
     # -- parsing -------------------------------------------------------------
 
     def test_both_markup_variants_yield_a_summary(self):
         for block in (COMMENT_BLOCK, NEWS_BLOCK):
             results = self.engine.response(_resp(block))
-            self.assertEqual(len(results), 1, block[:60])
+            self.assertEqual(len(_rows(results)), 1, block[:60])
             self.assertTrue(_first(results).content.strip(), f"no summary parsed from {block[:60]}")
 
     def test_the_date_line_is_never_the_summary(self):
@@ -228,20 +245,20 @@ class SiiParsingTests(_SiiEngineTestCase):
     def test_an_impossible_date_is_dropped_not_raised(self):
         block = COMMENT_BLOCK.replace("09.10.2026", "31.02.2026")
         results = self.engine.response(_resp(block))
-        self.assertEqual(len(results), 1)
+        self.assertEqual(len(_rows(results)), 1)
         self.assertIsNone(_first(results).publishedDate)
 
     def test_adverts_are_not_results(self):
-        self.assertEqual(len(self.engine.response(_resp(AD_AND_AUTHOR))), 0)
+        self.assertEqual(len(_rows(self.engine.response(_resp(AD_AND_AUTHOR)))), 0)
 
     def test_duplicate_urls_appear_once(self):
         results = self.engine.response(_resp(COMMENT_BLOCK + COMMENT_BLOCK))
-        self.assertEqual(len(results), 1)
+        self.assertEqual(len(_rows(results)), 1)
 
     def test_two_variants_together_do_not_bleed_into_each_other(self):
         results = self.engine.response(_resp(COMMENT_BLOCK + NEWS_BLOCK))
-        self.assertEqual(len(results), 2)
-        for r in results:
+        self.assertEqual(len(_rows(results)), 2)
+        for r in _rows(results):
             row = cast(LegacyResult, r)
             self.assertTrue(row.content.strip())
             self.assertNotIn("&nbsp;", row.content)
@@ -259,33 +276,33 @@ class SiiRelevanceTests(_SiiEngineTestCase):
     def test_one_matching_word_of_two_is_not_a_match(self):
         """Measured 2026-10-15: `zzqxv term` returned the same ten rows as `term`."""
         results = self.engine.response(_resp(self.TERM_BLOCK, query="zzqxv term"))
-        self.assertEqual(len(results), 0)
+        self.assertEqual(len(_rows(results)), 0)
 
     def test_the_same_block_matches_when_every_term_is_present(self):
         """The control for the test above - same block, different query."""
         results = self.engine.response(_resp(self.TERM_BLOCK, query="termin walnego"))
-        self.assertEqual(len(results), 1)
+        self.assertEqual(len(_rows(results)), 1)
 
     def test_terms_match_across_title_and_teaser(self):
         # "orlen" in the title, "korekta" only in the teaser
         results = self.engine.response(_resp(COMMENT_BLOCK, query="orlen korekta"))
-        self.assertEqual(len(results), 1)
+        self.assertEqual(len(_rows(results)), 1)
 
     def test_matching_ignores_case_and_polish_diacritics(self):
         for q in ("SPOLKA tygodnia", "spółka TYGODNIA", "Spolka Tygodnia"):
-            self.assertEqual(len(self.engine.response(_resp(COMMENT_BLOCK, query=q))), 1, q)
+            self.assertEqual(len(_rows(self.engine.response(_resp(COMMENT_BLOCK, query=q)))), 1, q)
 
     def test_l_with_stroke_folds_to_l(self):
         """NFKD leaves Ł alone; the portfolio repo paid for that once (ISIN_MAP test)."""
         block = COMMENT_BLOCK.replace("Spółka tygodnia: ORLEN", "Złoto i miedź")
-        self.assertEqual(len(self.engine.response(_resp(block, query="zloto"))), 1)
+        self.assertEqual(len(_rows(self.engine.response(_resp(block, query="zloto")))), 1)
 
     def test_a_single_absent_term_is_not_a_match(self):
-        self.assertEqual(len(self.engine.response(_resp(COMMENT_BLOCK, query="kghm"))), 0)
+        self.assertEqual(len(_rows(self.engine.response(_resp(COMMENT_BLOCK, query="kghm")))), 0)
 
     def test_an_empty_query_keeps_rows(self):
         """No terms, nothing to require - do not turn a parsing test into a filter test."""
-        self.assertEqual(len(self.engine.response(_resp(COMMENT_BLOCK, query=""))), 1)
+        self.assertEqual(len(_rows(self.engine.response(_resp(COMMENT_BLOCK, query="")))), 1)
 
     def test_dropped_rows_are_counted_at_debug_level(self):
         """The filter's cost is invisible otherwise: a query whose rows all
@@ -320,3 +337,27 @@ class SiiRelevanceTests(_SiiEngineTestCase):
         # a search that kept its rows has nothing to report.
         with self.assertNoLogs(self.engine.logger, level="DEBUG"):
             self.engine.response(_resp(COMMENT_BLOCK, query="orlen"))
+
+    def test_the_drop_count_reaches_the_response(self):
+        """A log line at debug is unreadable from outside, and this instance runs
+        `general.debug: false`, so it is not even written. The consumer that
+        records source coverage reads the JSON response, where a zero-result sii
+        query is otherwise ambiguous between "nothing matched" and "N rows were
+        dropped for missing a query term"."""
+        results = self.engine.response(_resp(self.TERM_BLOCK, query="zzqxv termin"))
+        self.assertEqual(_engine_data(results), {"dropped_rows": "1", "site_rows": "1"})
+
+    def test_the_counts_are_published_even_when_nothing_was_dropped(self):
+        """`engine_data.sii` present is the statement "sii ran". An engine that
+        was dropped or suspended contributes no key at all, which is the other
+        half of the ambiguity - so the keys cannot be conditional on a drop."""
+        results = self.engine.response(_resp(COMMENT_BLOCK, query="orlen"))
+        self.assertEqual(_engine_data(results), {"dropped_rows": "0", "site_rows": "1"})
+
+    def test_the_counts_do_not_count_themselves(self):
+        self.assertEqual(len(_rows(self.engine.response(_resp(COMMENT_BLOCK, query="orlen")))), 1)
+
+    def test_a_404_publishes_no_counts(self):
+        """It returns before the parse, so there is nothing to count - and a key
+        that said 0 would claim the engine looked."""
+        self.assertEqual(_engine_data(self.engine.response(_resp("", status_code=404))), {})

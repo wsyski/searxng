@@ -15,7 +15,17 @@ Adapted from timeplus-io/AgentSkills `searxng-web-search/scripts/searxng_search.
     were blocked or rate-limited, which is a different conclusion and a
     different next action.
 
-Two further diagnostics were added because both of the failures they name are
+  * `.answers` are printed, not only `.results`. Answerer-style engines - the
+    `online_currency`, `online_dictionary` and weather processors - put their
+    whole output in `.answers`, and an earlier version of this script read
+    `.results` alone. It therefore reported `weather`, `currency`, `define` and
+    `translate` as returning nothing, and that reading went into the repository
+    as four dead categories. They are not dead; the tool was blind. Measured
+    2026-10-30: `-c currency "100 EUR to PLN"` answers, `-c define serendipity`
+    answers, `-c weather warszawa` answers, `-c translate "en-pl dog"` answers
+    (the `from-to term` form is required - a bare word yields nothing).
+
+Three further diagnostics were added because the failures they name are
 INVISIBLE in the output rather than absent from it:
 
   * `report_foreign_engines` - SearXNG ignores an engine name it cannot load and
@@ -24,10 +34,18 @@ INVISIBLE in the output rather than absent from it:
   * `report_empty_time_range` - SearXNG drops every engine that does not declare
     `time_range_support` when a range is set, so a query can run ZERO engines and
     answer with an empty result and an empty `.unresponsive_engines`.
+  * `report_engine_data` - an engine can report something about its own response
+    through the `engine_data` channel. `sii` publishes how many rows its
+    relevance filter dropped, which is the difference between "nothing matched"
+    and "every row was missing a query term".
 
-Both write to stderr and neither changes the results, so `--json` output stays
+`report_ignored_pins` prefers the instance's own `unknown_engines` field, which
+this fork added to the JSON response, and falls back to comparing each row's
+`engines` against the pin on an instance that does not have it.
+
+All three write to stderr and none changes the results, so `--json` output stays
 parseable - which is why they run before the --json return rather than after it.
-Both name a cause only when the response supports one: a pinned engine that
+Each names a cause only when the response supports one: a pinned engine that
 matched nothing is reported as having matched nothing, not as not being loaded.
 
 Stdlib only. No third-party imports. `tests/test_sxq.py` (stdlib `unittest`,
@@ -123,8 +141,53 @@ def report_unresponsive(payload: dict) -> None:
         )
 
 
+def report_ignored_pins(payload: dict, pinned: str) -> bool:
+    """The authoritative answer, when the instance gives one.
+
+    This fork adds `unknown_engines` to the JSON response, naming the pins the
+    instance does not have. That is a statement from the server and needs no
+    inference, so it is preferred over `report_foreign_engines` below. Returns
+    True when it reported, so the caller can skip the inference.
+    """
+    named = [n for n in (payload.get("unknown_engines") or []) if n]
+    if not named:
+        return False
+    print(f"\n!! this instance has no engine named: {', '.join(sorted(named))}", file=sys.stderr)
+    print(
+        "   SearXNG drops an unknown pin and runs the DEFAULT search in its place, "
+        "so these rows are not what you asked for - check `sxq --health`.",
+        file=sys.stderr,
+    )
+    return True
+
+
+def report_engine_data(payload: dict) -> None:
+    """Whatever an engine said about its own response.
+
+    Only `sii` publishes here today: it ORs the query terms server-side, so
+    `response()` keeps a row only when every term is present, and a query whose
+    rows all use a synonym (`PKN` for `Orlen`) comes back empty. Without the
+    count that is indistinguishable from "the site has nothing".
+    """
+    for engine, kv in sorted((payload.get("engine_data") or {}).items()):
+        dropped = kv.get("dropped_rows")
+        site_rows = kv.get("site_rows")
+        if dropped and dropped != "0":
+            print(
+                f"\n!! {engine} dropped {dropped} of {site_rows} row(s) for missing a query term.",
+                file=sys.stderr,
+            )
+            print(
+                "   An empty or short answer here is a filter result, not an empty site; "
+                "retry with the synonym the source actually uses.",
+                file=sys.stderr,
+            )
+
+
 def report_foreign_engines(payload: dict, pinned: str) -> None:
-    """SearXNG ignores an unknown or inactive engine name and runs the default
+    """The fallback, for an instance whose response carries no `unknown_engines`.
+
+    SearXNG ignores an unknown or inactive engine name and runs the default
     search instead - measured 2026-10-15: engines='mojeek news' returned 96 rows
     from mwmbl, duckduckgo web and sii. Say so instead of letting it pass."""
     want = {e.strip() for e in pinned.split(",") if e.strip()}
@@ -154,10 +217,62 @@ def report_foreign_engines(payload: dict, pinned: str) -> None:
             )
 
 
+def answer_lines(answer: dict) -> list[str]:
+    """One answer, flattened to text.
+
+    `.answers` is not one shape. A legacy answerer sets `answer`; the weather
+    processor sets `current.summary`; the dictionary processor sets
+    `translations`, a list of its own. Keyed on which field is present rather
+    than on the engine, so an answerer this script has never seen still prints.
+    """
+    if answer.get("answer"):
+        return [str(answer["answer"])]
+    current = answer.get("current") or {}
+    if current.get("summary"):
+        return [str(current["summary"])]
+    lines = []
+    for entry in answer.get("translations") or []:
+        text = str(entry.get("text") or "")
+        if text:
+            lines.append(text)
+        for definition in (entry.get("definitions") or [])[:2]:
+            # wordnik sets `text` to its own first definition, so printing both
+            # shows the same sentence twice and reads like a parsing fault.
+            if str(definition) != text:
+                lines.append(f"  {definition}")
+    return lines
+
+
+def print_answers(answers: list, snippet_width: int) -> None:
+    """Answers are results too.
+
+    Reading `.results` alone is what made `weather`, `currency`, `define` and
+    `translate` look dead: every one of them answers, and none of them puts a
+    row in `.results`. Printed before the result list because an answer is the
+    direct reply to the query and a result is a page that might contain one.
+    """
+    for answer in answers:
+        lines = answer_lines(answer)
+        if not lines:
+            continue
+        engine = answer.get("engine") or "?"
+        print(f"= {clip(lines[0], snippet_width)}   [{engine}]")
+        for line in lines[1:4]:
+            print(f"  {clip(line, snippet_width)}")
+        if answer.get("url"):
+            print(f"  {answer['url']}")
+        print()
+
+
 def report_empty_time_range(payload: dict, time_range: str) -> None:
     """An engine without time_range_support is dropped when a range is set, so
     an empty, error-free answer can mean no engine ran at all."""
-    if time_range and not payload.get("results") and not payload.get("unresponsive_engines"):
+    if (
+        time_range
+        and not payload.get("results")
+        and not payload.get("answers")
+        and not payload.get("unresponsive_engines")
+    ):
         print(
             f"\n!! empty with time_range={time_range} and no failing engine: probably no selected "
             "engine supports time_range. Retry without --time-range and filter by date.",
@@ -212,14 +327,18 @@ def main() -> None:
     # into another tool, which is where a silently wrong answer is least
     # visible. They go to stderr and print nothing, so stdout stays a clean
     # JSON document and `sxq ... --json | jq` keeps working.
-    if args.engines:
+    if args.engines and not report_ignored_pins(payload, args.engines):
         report_foreign_engines(payload, args.engines)
     report_empty_time_range(payload, args.time_range)
+    report_engine_data(payload)
 
     if args.json:
         json.dump(payload, sys.stdout, ensure_ascii=False, indent=2)
         print()
         return
+
+    answers = payload.get("answers") or []
+    print_answers(answers, args.snippet_width)
 
     results = payload.get("results") or []
     for item in results[: args.max_results]:
@@ -233,7 +352,10 @@ def main() -> None:
         print()
 
     if not results:
-        print("no results")
+        # An answer is not "no results". Saying it is was the whole mistake:
+        # four categories that answer every time were written down as dead.
+        if not answers:
+            print("no results")
         report_unresponsive(payload)
     else:
         total = payload.get("number_of_results")

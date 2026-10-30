@@ -8,6 +8,23 @@
 
 services:
   core:
+    environment:
+      # EVERY BIND-MOUNTED .py FILE IN THIS SERVICE IS INERT WITHOUT THIS.
+      # The image ships precompiled bytecode in `searx/**/__pycache__`, written
+      # with PEP 552 *unchecked hash* invalidation (`flags=1`, check_source off),
+      # which tells CPython to use the .pyc and never look at the .py beside it.
+      # So a mounted module is read only if the image has no .pyc for it.
+      # Measured 2026-10-30 inside the container:
+      #   searx/engines/__pycache__/sii.cpython-314.pyc      flags=0  (fork-local,
+      #       absent from the image, compiled from the mount on first import - works)
+      #   searx/engines/__pycache__/github.cpython-314.pyc   flags=1  (upstream
+      #       engine, baked at image build - the fork-side token patch below was
+      #       NEVER executed, and nothing said so)
+      # PYTHONPYCACHEPREFIX moves the cache lookup out of the package tree
+      # entirely, so the baked .pyc files are not consulted and every module is
+      # compiled from the source that is actually there. It costs one cold
+      # compile of the tree at startup.
+      PYTHONPYCACHEPREFIX: /tmp/pycache
     env_file:
       - ./.env
       - ./.env.prod
@@ -36,6 +53,27 @@ services:
       # mount the container keeps the pristine image copy and the patch is a
       # silent no-op: the repo would look patched while nothing changed.
       - ../searx/engines/github.py:/usr/local/searxng/searx/engines/github.py:ro
+      # Core files, not engines. The JSON response gained two fields it could not
+      # express before: `unknown_engines` (the `engines=` pins this instance does
+      # not have - SearXNG drops them and runs the DEFAULT search, and until now
+      # said nothing) and `engine_data` (the documented engine->client channel,
+      # which the HTML page round-trips through hidden form fields and the JSON
+      # encoder simply omitted; searx.engines.sii publishes its drop count there).
+      #
+      # These three are mountable only because they carried NO fork change before
+      # this one: each was byte-identical to the pinned image, checked with
+      #   docker exec searxng-core cat /usr/local/searxng/searx/webutils.py \
+      #     | diff - <(git show HEAD:searx/webutils.py)
+      # searx/webapp.py is NOT identical (the image still has /image_proxy, HEAD
+      # has /image), so it is deliberately neither patched nor mounted: the field
+      # is reported in the JSON response only, which is what the consumers read.
+      # That diff now shows the fork hunks, so the rule going forward is: when
+      # SEARXNG_VERSION in ./.env moves, RE-RUN ALL THREE DIFFS and confirm each
+      # one differs from the new image ONLY by the fork hunks. Anything else is
+      # upstream drift being silently reverted by the mount.
+      - ../searx/webadapter.py:/usr/local/searxng/searx/webadapter.py:ro
+      - ../searx/webutils.py:/usr/local/searxng/searx/webutils.py:ro
+      - ../searx/search/models.py:/usr/local/searxng/searx/search/models.py:ro
 
   # Unused: settings.yml has limiter off and no valkey.url. Start it with
   # `docker compose --profile valkey up -d` if that changes.

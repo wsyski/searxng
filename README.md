@@ -27,20 +27,24 @@ Both were live defects on 2026-10-15 and both are fixed; they are written down
 because a *client* cannot tell the difference from a correct answer, and
 Firecrawl searches through this instance.
 
-- **A news query with a time range still runs no engine in practice.** SearXNG
-  *drops* every news engine without `time_range_support`, and only `bing news`
-  has it. Measured 2026-10-24: `-c news --time-range day` and `week` return zero
-  rows; `bing news` answers with a parsing error (an empty response body) and
-  the others are dropped. `bing news` keeps `enable_http3: false` because
-  `bing_news.py` asks for HTTP/3 and UDP/443 is filtered on this egress. The
-  portfolio's Firecrawl news sweeps therefore omit `tbs`; re-add a range when
-  `bing news` returns rows again or another range-capable news engine lands.
+- **A news query with a time range runs exactly one engine.** SearXNG *drops*
+  every news engine without `time_range_support`, and only `bing news` has it.
+  Re-measured 2026-10-30, `q=kghm`: 4 rows at `day`, 7 at `week`, 8 at `month`,
+  all `bing news`, against 34 rows unranged from three engines. It **works** — an
+  earlier 2026-10-24 reading of zero rows and a `bing news` parsing error does
+  not reproduce. `bing news` keeps `enable_http3: false` because `bing_news.py`
+  asks for HTTP/3 and UDP/443 is filtered on this egress. The cost of a range is
+  breadth, not correctness: it narrows `news` to one source, so take a window and
+  filter on `publishedDate` when you want all four.
 - **Pinning an engine this instance does not have runs the default search.**
   `engines=mojeek news` returned 96 rows from `mwmbl`, `duckduckgo web` and
   `sii` when it was measured on 2026-10-15; `sii` is finance-only since
   2026-10-24, so a repeat would be short those rows. That is upstream behaviour
-  and is not worked around here; the skill's `sxq` detects it instead. `DESIGN.md`
-  → Local deployment has the measurements.
+  **The response says so since 2026-10-30:** `unknown_engines`, alongside
+  `unresponsive_engines`, in `GET /search?format=json`. The fallback behaviour is
+  unchanged — the default search still runs — but it is no longer silent. The
+  skill's `sxq` reports that field and keeps its own inference for a stock
+  instance that lacks it. `DESIGN.md` → Local deployment has the measurements.
 
 **This instance has no authentication.** It is published on the LAN address so
 LAN clients can reach it, which makes it an open search proxy. Keep it that way

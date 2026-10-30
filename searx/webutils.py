@@ -168,6 +168,16 @@ def get_json_response(sq: "SearchQuery", rc: "ResultContainer") -> str:
         'infoboxes': rc.infoboxes,
         'suggestions': list(rc.suggestions),
         'unresponsive_engines': get_translated_errors(rc.unresponsive_engines),
+        # Engines the client pinned by name that this instance does not have.
+        # Without this a pin nobody recognises is answered by the *default*
+        # search, and the response looks like a successful pinned search.
+        'unknown_engines': list(sq.unknown_engines),
+        # The engine -> {key: value} channel (:ref:`engine_data`). The HTML
+        # results page round-trips it through hidden form fields; a JSON client
+        # could not see it at all, so an engine had no way to report anything
+        # about its own response - a paging cursor or, for searx.engines.sii,
+        # how many rows its relevance filter dropped.
+        'engine_data': {engine: dict(kv) for engine, kv in rc.engine_data.items()},
     }
     response = json.dumps(data, cls=JSONEncoder)
     return response

@@ -179,16 +179,28 @@ engines:
   # News: duckduckgo news, wikinews (default on), qwant news and bing news answer.
   # None of the first three supports time_range, and SearXNG drops an engine that
   # does not when a range is set - so `-c news` + `time_range` ran ZERO engines and
-  # returned an empty, error-free response. bing news supports it. Re-probed
-  # 2026-10-15, AFTER the enable_http3 fix below: 10 results with no range, 5 with
-  # time_range=month, 3 with time_range=week, all attributed to bing news.
+  # returned an empty, error-free response. bing news supports it.
+  #
+  # CURRENT MEASUREMENT, 2026-10-30, q=kghm, this is the one to trust:
+  #   categories=news, no range   -> 34 rows (duckduckgo news 27, bing news 9,
+  #                                  wikinews 5; qwant news: access denied)
+  #   time_range=day              ->  4 rows, all bing news
+  #   time_range=week             ->  7 rows, all bing news
+  #   time_range=month            ->  8 rows, all bing news
+  #   engines=bing news, no range ->  9 rows, no unresponsive engine
+  # bing news is healthy with enable_http3: false below. A reading taken
+  # 2026-10-24 recorded ZERO rows and a bing news parsing error (empty response
+  # body) and was carried in skills/searxng/references/categories.md; it does NOT
+  # reproduce and that document has been corrected. Treat it as a transient
+  # upstream blip, not as the state of this instance.
+  #
+  # Superseded figures, kept only so a reader does not compare them with the
+  # above: 2026-10-15 recorded 10 unranged / 5 month / 3 week, and an earlier
+  # probe that same day 8 at month while bing news was still failing on HTTP/3.
+  #
   # google news ("access denied"), reuters (HTTP error, still on 2026-10-15) and
   # brave.news (crash) stay off. mojeek news, startpage news and yahoo news are
   # `inactive` upstream (proof-of-work captchas).
-  #
-  # An earlier probe the same day recorded "8 with time_range=month". That was
-  # taken while bing news was still failing - it is the HTTP/3 trap below, and the
-  # figure should not be compared with the one above.
   #
   # enable_http3: false is the "connection error" recorded on 2026-10-10, and it
   # was never bing being down. bing_news.py sets enable_http3 = True, which sends
@@ -211,3 +223,25 @@ engines:
     disabled: true
   - name: brave.news
     disabled: true
+  # Three engines fail from this egress and are DELIBERATELY left enabled
+  # (probed 2026-10-30, one pinned query each):
+  #   wttr.in   - "parsing error"           (categories: weather, other)
+  #   mozhi     - "HTTP connection error"   (categories: translate)
+  #   geizhals  - "access denied"           (categories: shopping)
+  # Disabling them would be the obvious move and it is the wrong one. None of
+  # them is in `general`, `news` or any tab in categories_as_tabs above, so none
+  # costs latency on an ordinary query - and each one's failure is the only thing
+  # that distinguishes "this category is broken" from "this category found
+  # nothing". `geizhals` is the sole engine in `shopping`: turn it off and
+  # `categories=shopping` answers 0 results with an EMPTY .unresponsive_engines,
+  # which is the healthy-looking empty this whole file exists to avoid. Leave
+  # them on until they are fixed upstream or replaced.
+  #
+  # `weather`, `currency`, `define` and `translate` were recorded as dead
+  # categories. They are not. Answerer-style engines put their entire output in
+  # `.answers`, not `.results`, and the tool that measured them read `.results`
+  # alone. Verified 2026-10-30: duckduckgo weather and openmeteo answer in
+  # `weather`, `currency` answers, `wordnik` answers in `define`, and dictzone +
+  # mymemory answer in `translate` - the last only for the required `from-to
+  # term` form (`en-pl dog`; a bare `dog` yields nothing, which is the engine
+  # API, not a fault). `sxq` now prints `.answers`.

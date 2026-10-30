@@ -361,16 +361,99 @@ changes to the base file do not conflict.
   - **Do not `chown 1000:1000` inside the container** to mean "me". It means
     container uid 1000, which is host uid `100999` — a different wrong answer.
     I did exactly that while diagnosing this and had to undo it.
+- **A bind mount is not enough: the image's bytecode wins.** Found 2026-10-30.
+  The image ships precompiled `searx/**/__pycache__/*.pyc` written with PEP 552
+  **unchecked-hash** invalidation — the pyc header's flag word is `1`, meaning
+  hash-based with `check_source` *off*, which instructs CPython to load the
+  bytecode and never stat or read the `.py` beside it. A mounted module is
+  therefore executed only if the image happens to have no pyc for it.
+  Measured inside the container, reading the flag word off each file:
+
+  | pyc | flags | mtime | effect |
+  |---|---|---|---|
+  | `searx/engines/__pycache__/sii.cpython-314.pyc` | 0 | today | fork-local module, absent from the image, compiled from the mount on first import — **the mount worked** |
+  | `stooq`, `ksiazak`, `dnarynkow`, `liferay_forum` | 0 | today | same |
+  | `searx/engines/__pycache__/github.cpython-314.pyc` | 1 | image build | upstream module, baked — **the fork's token patch never ran** |
+  | `searx/__pycache__/webutils`, `webadapter`, `search/models` | 1 | image build | baked — any mount of these is inert |
+
+  So the four fork-local engines were fine and `github.py` was not: the whole
+  reason that mount exists (read `GITHUB_PERSONAL_ACCESS_TOKEN` from the
+  environment, lifting the rate ceiling from 10 to 30 requests a minute) was a
+  no-op. And the check this file recommended for it —
+  `docker exec searxng-core grep -c GITHUB_PERSONAL_ACCESS_TOKEN
+  …/searx/engines/github.py` — returns 1 either way, because it reads the file
+  the mount placed there rather than the bytecode Python executes. A check that
+  cannot fail is the trap, not the mount.
+
+  **The fix is one environment variable.** `PYTHONPYCACHEPREFIX=/tmp/pycache`
+  (`container/docker-compose.override.yml`) moves the cache lookup out of the
+  package tree, so no baked pyc is consulted and every module is compiled from
+  the source that is actually present. It costs one cold compile of the tree at
+  startup. Verified 2026-10-30: before it, a `format=json` response carried
+  neither new field although `webutils.py` was mounted and `grep` found the new
+  code inside it; after it, `engines=mojeek news` answered
+  `"unknown_engines": ["mojeek news"]`, and `github.py`'s `request()` sets a
+  `Bearer` header — checked under the app's own interpreter,
+  `/usr/local/searxng/.venv/bin/python`, not the container's system `python3`,
+  which has neither `msgspec` nor `dateutil`.
+
+  **To check whether a mount is live, assert on behaviour, not on the file.**
+  Ask the running instance for something only the patched code can produce.
+
+- **Mount a core file only when it is byte-identical to the image's copy.**
+  The three mounted for the JSON response fields were checked both ways:
+
+  ```sh
+  docker exec searxng-core cat /usr/local/searxng/searx/webutils.py \
+    | diff - <(git show HEAD:searx/webutils.py)
+  ```
+
+  `webadapter.py`, `webutils.py`, `results.py` and `search/models.py` came back
+  empty on 2026-10-30. `searx/webapp.py` did **not** — the image still has the
+  `/image_proxy` route and a `set_context_network_name` call that HEAD has
+  dropped for `/image` — so it is deliberately neither patched nor mounted, and
+  the ignored-pin report is therefore a JSON-response field only, not something
+  the HTML results page shows. **Re-run all four diffs whenever
+  `SEARXNG_VERSION` in `container/.env` moves.**
+
 - **The container runs the pinned upstream image, not this repo's source.**
   Anything edited under `searx/` here is inert until it is bind-mounted in
   `docker-compose.override.yml`, and that failure is silent: the repo looks
   patched while the container keeps the image's copy. Currently mounted —
-  `liferay_forum.py`, `sii.py`, `dnarynkow.py`, `ksiazak.py` (fork-local),
-  `stooq.py` (fork-local, enabled in `finance`/`finance-poland`; see `README.md`) and
-  `github.py` (an upstream engine patched fork-side to read the GitHub token
-  from the environment). Check with
-  `docker exec searxng-core grep -c GITHUB_PERSONAL_ACCESS_TOKEN /usr/local/searxng/searx/engines/github.py`,
-  not by reading the repo.
+  `searx/engines/`: `liferay_forum.py`, `sii.py`, `dnarynkow.py`, `ksiazak.py`
+  (fork-local), `stooq.py` (fork-local, enabled in `finance`/`finance-poland`;
+  see `README.md`) and `github.py` (an upstream engine patched fork-side to read
+  the GitHub token from the environment); plus three core files for the JSON
+  response fields — `searx/webadapter.py`, `searx/webutils.py` and
+  `searx/search/models.py`.
+
+  **Do not check a mount with `grep` on the mounted file.** That is what this
+  file used to recommend
+  (`docker exec searxng-core grep -c GITHUB_PERSONAL_ACCESS_TOKEN
+  …/searx/engines/github.py`) and it returns 1 whether or not Python ever
+  executes the file — see the bytecode entry above, where exactly that check
+  passed for three weeks while the patch was dead. Ask the running instance for
+  something only the patched code can produce:
+
+  ```sh
+  # the core mounts: the field does not exist in the pinned image
+  curl -s -G http://192.168.1.100:8888/search --data-urlencode q=kghm \
+    --data-urlencode "engines=mojeek news" --data-urlencode format=json \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["unknown_engines"])'
+  # the github mount, under the APP's interpreter, not the system python3
+  docker exec searxng-core /usr/local/searxng/.venv/bin/python -c '
+  import importlib.util
+  s=importlib.util.spec_from_file_location("gh","/usr/local/searxng/searx/engines/github.py")
+  m=importlib.util.module_from_spec(s); s.loader.exec_module(m)
+  p={"headers":{}}; m.request("test",p); print("Authorization" in p["headers"])'
+  ```
+
+  `github.py` was diffed against the **pristine image** on 2026-10-30 —
+  `docker run --rm --entrypoint cat searxng/searxng:<pin>
+  /usr/local/searxng/searx/engines/github.py | diff - searx/engines/github.py` —
+  and differs only by the token hunk, which matters now that the mount is live
+  for the first time. Use `docker run` on the image, not `docker exec` on the
+  container: the latter reads the mount.
 - It sets `use_default_settings: true` and crucially
   `search.formats: [html, json]`. SearXNG ships with `html` only, and the
   Firecrawl instance at `/opt/playground/firecrawl` consumes
@@ -392,8 +475,17 @@ changes to the base file do not conflict.
   which is what the file's older "connection error" note recorded. No upstream
   engine file is patched for this — SearXNG copies every settings key onto the
   engine module (`searx/engines/__init__.py`, the `setattr` loop over
-  `engine_data`), so one line does it. Verified 2026-10-15: 4 results for
-  `-c news --time-range week`, all `bing news`.
+  `engine_data`), so one line does it.
+
+  **Current figures, re-probed 2026-10-30 with `q=kghm` — one dated answer, and
+  the one to trust:** `-c news` with no range gives 34 rows from three engines;
+  `--time-range day` 4, `week` 7, `month` 8, every one of them `bing news`; a
+  pinned `-e "bing news"` gives 9. Two earlier readings were in the tree and
+  disagreed with each other — 2026-10-15 recorded 10/5/3 (unranged/month/week)
+  and 2026-10-24 recorded **zero** rows with a `bing news` parsing error on an
+  empty body. The 10-24 reading does not reproduce; treat it as a transient
+  upstream blip. `skills/searxng/references/categories.md`, `README.md` and
+  `container/core-config/settings.yml` have all been corrected to the 10-30 set.
 - **`sii` filters on every query term.** sii.org.pl ORs the terms of
   `/szukaj?search=` and matches fragments, so `zzqxv term` returned the same ten
   rows as `term`. `sii` is in `general`, which put those ten unrelated rows into
@@ -404,17 +496,113 @@ changes to the base file do not conflict.
   server-side, so a filter in `response()` is the only place that can see both
   the query and the row. The filter's cost is otherwise invisible — a query
   whose rows all use a synonym (`PKN` for `Orlen`) returns empty, and empty
-  looks the same from outside — so it logs `dropped N of M row(s)` at **debug**
-  with the query. Debug, not warning: a synonym miss is an accepted outcome of
-  the design, and a warning here would train people to ignore the ones that
-  matter. This instance runs `general.debug: false`, so the line appears only
-  for an operator who has turned debug on.
-- **Pinning an engine this instance does not have runs the default search, and
-  says nothing.** `engines=mojeek news` returns 96 results from `mwmbl`,
-  `duckduckgo web` and `sii`. That is upstream behaviour and is not worked
-  around here; `sxq` detects it instead — each result carries its `engines`, so
-  the skill's own tool compares them against the pin and warns on stderr, and
-  warns again when a `time_range` came back empty with nothing failing.
+  looks the same from outside.
+
+  **The count is published in the response (2026-10-30), not only logged.** The
+  log line it used to rely on is `logger.debug`, and this instance runs
+  `general.debug: false`, so it was never written at all — and the consumer that
+  records source coverage reads the JSON response and could not read this
+  instance's log in any case. `sii.response()` now emits
+  `engine_data.sii.dropped_rows` and `.site_rows` through the documented
+  `engine_data` channel (`res.types.LegacyResult(engine_data=…, key=…)`, as
+  `deviantart.py` does for a paging cursor), and `searx/webutils.py`
+  `get_json_response` exposes `engine_data` — which it previously omitted, so a
+  JSON client could not see that channel at all and no engine had any way to
+  report anything about its own response.
+
+  Two details that are load-bearing:
+
+  - **The counts are published on every response, `0` included.**
+    `engine_data.sii` being present is itself the statement "sii ran", which is
+    the other half of the ambiguity: an engine that was dropped or suspended
+    contributes no key. A `404` returns before the parse and publishes nothing,
+    because a `0` there would claim the engine looked.
+  - **They are entries in the result list**, which is how that channel works, so
+    `len(engine_results)` is no longer the row count.
+    `tests/unit/test_engine_sii.py` has `_rows()` for exactly this and the sii
+    tests assert through it.
+
+  The log line stays at **debug** and keeps its own rationale: a synonym miss is
+  an accepted outcome of the design, and a warning here would train people to
+  ignore the ones that matter.
+- **Pinning an engine this instance does not have runs the default search.**
+  `engines=mojeek news` returns default-category rows — 96 from `mwmbl`,
+  `duckduckgo web` and `sii` on 2026-10-15; 36 from `mwmbl`, `yahoo` and
+  `duckduckgo web` on 2026-10-30, `sii` having moved to `finance`.
+
+  **The response now names the ignored pin (2026-10-30):** `unknown_engines`,
+  alongside `unresponsive_engines`, in `GET /search?format=json`. The
+  *behaviour* is left exactly as upstream has it — the default search still
+  runs — because changing the fallback is a different argument from reporting
+  it, and a caller that is told which pins were dropped can decide for itself.
+
+  Where it had to go, and why it is not where you would look:
+
+  - `parse_generic` in `searx/webadapter.py` filters an unknown name out of the
+    `engines` field **before** an `EngineRef` exists for it, so those names
+    cannot reach `validate_engineref_list` — whose `unknown` return value
+    upstream computes and `webapp.py` then discards unused. Collecting them in
+    `parse_generic` is the only place that can see them. Both sources are folded
+    together: the filtered names, and the refs that do reach
+    `validate_engineref_list` naming no loaded engine (a `!bang`).
+  - They ride on `SearchQuery.unknown_engines` (`searx/search/models.py`) rather
+    than through `webapp.py`. That keeps `searx/webapp.py` untouched — it is the
+    one file in this path that is **not** byte-identical to the pinned image and
+    therefore cannot be mounted. Deliberately excluded from `__eq__` and
+    `__hash__`: two queries that run the same engines are the same query whatever
+    a client misspelt.
+  - `searx/webutils.py` `get_json_response` serialises it.
+
+  This is the piece most worth offering upstream: a reporting-only change to a
+  silent failure that affects any API consumer, with no behaviour change and no
+  new configuration.
+
+  `sxq` prefers the field and keeps its own inference as a fallback for a stock
+  instance that does not have it — each result carries its `engines`, so the tool
+  compares them against the pin and warns on stderr, and warns again when a
+  `time_range` came back empty with nothing failing.
+- **Four "dead" categories were never dead; the measuring tool was blind.**
+  `weather`, `shopping`, `currency`, `define` and `translate` were recorded as
+  returning zero behind a single failing engine. Re-probed 2026-10-30 counting
+  `.answers` as well as `.results`: answerer-style engines — the
+  `online_currency` and `online_dictionary` processors, and the weather engines —
+  put their **entire** output in `.answers` and never fill `.results`.
+
+  | category | query | `.results` | `.answers` | verdict |
+  |---|---|---|---|---|
+  | `weather` | warszawa | 0 | 1 | live (`duckduckgo weather`; `openmeteo` answers too, geocoding "warszawa" to Ohio) |
+  | `currency` | 100 EUR to PLN | 0 | 1 | live |
+  | `define` | serendipity | 0 | 3 | live (`wordnik`) |
+  | `translate` | en-pl dog | 0 | 3 | live (`dictzone`, `mymemory translated`) |
+  | `translate` | dog | 0 | 0 | not a fault — the processor requires the `from-to term` form |
+  | `shopping` | laptop | 0 | 0 | genuinely dead |
+
+  The root cause is in `skills/searxng/scripts/sxq`, which printed `.results`
+  alone and said "no results"; that reading was then written into
+  `references/categories.md` as five dead categories. `sxq` now prints `.answers`
+  and only says "no results" when both arrays are empty. The fix belonged in the
+  tool, so **no engine was disabled for this.**
+
+- **Three failing engines are deliberately left enabled.** `wttr.in` (parsing
+  error, in `weather` and `other`), `mozhi` (HTTP connection error, in
+  `translate`) and `geizhals` (access denied, the **sole** `shopping` engine) all
+  fail from this egress, re-probed 2026-10-30 one pinned query each. Disabling
+  them is the obvious move and the wrong one:
+
+  - None of them is in `general`, `news` or any entry of `categories_as_tabs`, so
+    none costs latency on an ordinary query or on a portfolio sweep.
+  - Each one's entry in `.unresponsive_engines` is the only thing separating
+    "this category is broken" from "this category found nothing". Turn
+    `geizhals` off and `categories=shopping` answers 0 results with an **empty**
+    `.unresponsive_engines` — the healthy-looking empty that most of this
+    section exists to avoid.
+
+  So `shopping` is the one truly dead category, and it is kept reachable
+  *because* its failure is self-describing. Revisit when any of the three is
+  fixed upstream or replaced; the reasoning is repeated in
+  `container/core-config/settings.yml` where an operator would reach for the
+  toggle.
+
 - SearXNG has **no authentication.** The compose port is published on a LAN
   address deliberately, making it an open search proxy for the LAN. Do not
   publish it beyond a trusted network.
@@ -474,6 +662,21 @@ changes to the base file do not conflict.
   So this host carries a plain Firefox under `local/firefox` with
   `local/py3/bin/firefox` pointing at it (`manage` puts `local/py3/bin` first on
   PATH). `local/` is gitignored, so this is environment, not repository.
+- **A venv rebuild deletes that symlink, so a plain upstream merge turns
+  `test.robot` red.** Hit 2026-10-30. The merge bumped `requirements*.txt`
+  (python-dateutil 2.9 → 3.0 among others), which invalidates the
+  `requirements.sha256` stamp and makes the next `make` rebuild `local/py3` from
+  scratch — taking `local/py3/bin/firefox` with it. PATH then resolves `firefox`
+  to Ubuntu's snap shim again and the suite dies with
+  `Process unexpectedly closed with status 1`, which names neither the merge nor
+  the symlink. `local/firefox` itself survives, so the repair is one line:
+
+  ```sh
+  ln -s "$PWD/local/firefox/firefox" local/py3/bin/firefox
+  ```
+
+  Check it before blaming a code change: `ls -l local/py3/bin/firefox`.
+  `make test.robot` went from exit 1 to exit 0 with nothing else altered.
 - **`gecko.driver` checks the driver it installed, not the one on PATH.**
   `manage gecko.driver` unpacks a pinned geckodriver into `${PY_ENV_BIN}`, but
   the "already installed" test used to run bare `geckodriver -V` — which the snap
