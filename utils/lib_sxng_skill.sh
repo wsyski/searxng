@@ -8,8 +8,8 @@
 # This is the inverse of the hub's own rule - "~/.agents is the sole source of
 # truth for user-scoped shared capability" - and it was adopted deliberately,
 # because the skill documents an instance this repo owns: its port, its
-# categories, and three engines that exist only in searx/engines/. A skill that
-# describes a deployment belongs next to the deployment.
+# categories, and six finance engines that exist only in searx/engines/. A skill
+# that describes a deployment belongs next to the deployment.
 #
 # The cost is two copies and a sync step, and a sync step nobody runs is a
 # silent divergence. So the sync is a target rather than a habit, and there is a

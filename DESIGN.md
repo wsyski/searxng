@@ -30,7 +30,7 @@ The sibling files: `README.md` has the short "This fork" summary,
 ## The searxng skill
 
 `skills/searxng/` is the **source of truth** for the agent skill that documents this
-instance — its port, its categories, and the three engines that exist only in
+instance — its port, its categories, and the six finance engines that exist only in
 `searx/engines/`. It is mirrored into the user skill hub at
 `~/.agents/skills/searxng`, which is where Claude Code, OpenCode and Hermes load it
 from.
@@ -420,9 +420,10 @@ changes to the base file do not conflict.
   Anything edited under `searx/` here is inert until it is bind-mounted in
   `docker-compose.override.yml`, and that failure is silent: the repo looks
   patched while the container keeps the image's copy. Currently mounted —
-  `searx/engines/`: `liferay_forum.py`, `sii.py`, `dnarynkow.py`, `ksiazak.py`
-  (fork-local), `stooq.py` (fork-local, enabled in `finance`/`finance-poland`;
-  see `README.md`) and `github.py` (an upstream engine patched fork-side to read
+  `searx/engines/`: `liferay_forum.py`, `sii.py`, `dnarynkow.py`, `ksiazak.py`,
+  `aktienyheterna.py`, `placera.py` (fork-local; the last two in
+  `finance`/`finance-sweden`), `stooq.py` (fork-local, enabled in
+  `finance`/`finance-poland`; see `README.md`) and `github.py` (an upstream engine patched fork-side to read
   the GitHub token from the environment); plus three core files for the JSON
   response fields — `searx/webadapter.py`, `searx/webutils.py` and
   `searx/search/models.py`.

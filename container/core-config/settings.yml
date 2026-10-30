@@ -116,10 +116,12 @@ engines:
   # engine joins `finance` and `finance-sweden` and the Polish book does not
   # change, which is the whole reason the DeGiro job asks for the subset rather
   # than for `finance`.
-  # A category this instance does not have is NOT reported - a misspelled
-  # `categories=finance-polnd` silently runs the default general search
-  # (measured 2026-10-30: 36 rows from mwmbl/duckduckgo web/yahoo, empty
-  # unknown_engines). unknown_engines covers engine pins only.
+  # A category this instance does not have selects no engine, so the DEFAULT
+  # general search runs in its place - a misspelled `categories=finance-polnd`
+  # answered 36 rows from mwmbl/duckduckgo web/yahoo. That fallback is upstream
+  # behaviour and is unchanged, but it is no longer silent: the response carries
+  # `unknown_categories` (2026-10-30), beside `unknown_engines`, which covers
+  # engine pins only.
   # SII - Stowarzyszenie Inwestorow Indywidualnych (sii.org.pl), Poland's
   # individual-investor association. Per-company commentary that names a GPW
   # ticker in the title, which is what makes it searchable. Not an upstream

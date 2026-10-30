@@ -100,15 +100,24 @@ changing anything:
 | `sii` (`!sii`) | sii.org.pl `/szukaj` | The parameter is `search`, **not `q`** — `?q=` answers 200 with one identical 62 kB page for every query including a nonsense one, so a wrong parameter reads as a healthy engine that found nothing. A zero-hit query is **404**, not an empty 200. And the site **ORs** the terms and matches fragments, so `zzqxv term` returned the same ten rows as `term`; the engine now keeps a row only when every query term appears in its title or teaser. |
 | `dna rynkow` (`!dna`) | dnarynkow.pl `/spolki/?search=` | No search *page* — only a parameter, so every path-shaped probe 404s while the search works. Results are server-rendered into the HTML body, not into the `__NUXT_DATA__` payload. |
 | `ksiazak` (`!ksz`) | konradksiazak.pl WordPress REST | `search` matches body text, so a hit does **not** mean the company is in the title. |
+| `aktienyheterna` (`!akn`) | aktienyheterna.se WordPress REST | `search` matches a **substring** of the body: `?search=granges` returns two Spendrups posts naming **Grängesberg**, a town, and nothing about Gränges. The engine keeps a row only when every term is a whole word in title, excerpt or body — so its correct answer for Gränges is zero. |
+| `placera` (`!pla`) | placera.se `/search?q=` | The path is `/search`, not `/sok` (404), and `/api/search` answers 200 with an empty object for every parameter name tried. The site ranks near-misses in — `granges` brings back press releases about *grants* — so the engine filters on whole words in the title and slug. No paging: `page`/`p`/`offset` all return the same 100-row page. |
 
-These three, and stooq below, are in **both `finance` and `finance-poland`** —
-not `general` or `news`. `finance` is the international/general finance category;
-`finance-poland` is the Polish subset. A default search no longer runs them;
-request either category explicitly (`-c finance` / `-c finance-poland` or the
-tabs). The portfolio's DeGiro news pass asks for `finance-poland` once per day
-for the highest-weight uncovered holding.
+These five, and stooq below, are in **both `finance` and a per-market subset** —
+not `general` or `news`. `finance` is the international/general finance category
+and the **union** of the subsets; `finance-poland` holds `sii`, `dna rynkow`,
+`ksiazak` and `stooq`, and `finance-sweden` holds `aktienyheterna` and
+`placera`. A default search no longer runs them; request a category explicitly
+(`-c finance` / `-c finance-poland` / `-c finance-sweden` or the tabs). The
+portfolio's DeGiro news pass asks for `finance-poland` once per day for the
+highest-weight uncovered holding, and the two Avanza books ask
+`finance-sweden` the same way, once per book per day.
 
-The fifth fork-local engine is not a company source. `stooq` (`!stq`) wraps
+Both Swedish engines publish `dropped_rows`/`site_rows` through `engine_data`,
+as `sii` does: an empty answer with `site_rows` set means "nobody wrote about
+this name", and a missing `engine_data.<name>` key means the engine never ran.
+
+One fork-local finance engine is not a company source. `stooq` (`!stq`) wraps
 stooq.com's `/search/`, which is a Polish **news** index of PAP items, not a
 ticker lookup (`/q/s/` matches symbols only). It is **enabled in
 `finance`/`finance-poland` only**, so it never joins ordinary news/general searches —

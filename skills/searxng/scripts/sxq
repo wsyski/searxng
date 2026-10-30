@@ -36,9 +36,11 @@ INVISIBLE in the output rather than absent from it:
     answer with an empty result and an empty `.unresponsive_engines`.
   * `report_ignored_categories` - a category name the instance does not have
   * `report_engine_data` - an engine can report something about its own response
-    through the `engine_data` channel. `sii` publishes how many rows its
-    relevance filter dropped, which is the difference between "nothing matched"
-    and "every row was missing a query term".
+    through the `engine_data` channel. `sii`, `aktienyheterna` and `placera`
+    publish how many rows their relevance filter dropped, which is the
+    difference between "nothing matched" and "every row was missing a query
+    term". The reporting is generic over engine names, so a new engine that
+    publishes the same two keys is covered without an edit here.
 
 `report_ignored_pins` prefers the instance's own `unknown_engines` field, which
 this fork added to the JSON response, and falls back to comparing each row's
@@ -184,10 +186,16 @@ def report_ignored_categories(payload: dict) -> None:
 def report_engine_data(payload: dict) -> None:
     """Whatever an engine said about its own response.
 
-    Only `sii` publishes here today: it ORs the query terms server-side, so
-    `response()` keeps a row only when every term is present, and a query whose
-    rows all use a synonym (`PKN` for `Orlen`) comes back empty. Without the
-    count that is indistinguishable from "the site has nothing".
+    Three engines publish here today, all for the same reason: their site
+    matches more loosely than the query asks. `sii` ORs the terms server-side,
+    `placera` ranks near-misses into the page, and `aktienyheterna`'s WordPress
+    `search` matches a substring of the body (`granges` hits `Grängesberg`), so
+    each keeps a row only when every term is really present. A query whose rows
+    all use a synonym (`PKN` for `Orlen`) then comes back empty, and without
+    the count that is indistinguishable from "the site has nothing".
+
+    Keyed on nothing but the two field names, so a fourth engine that publishes
+    `dropped_rows`/`site_rows` is reported without an edit here.
     """
     for engine, kv in sorted((payload.get("engine_data") or {}).items()):
         dropped = kv.get("dropped_rows")
@@ -308,7 +316,13 @@ def main() -> None:
     )
     p.add_argument("query", nargs="?", help="search terms")
     p.add_argument("--url", help="override the instance (default: $SEARXNG_URL)")
-    p.add_argument("--categories", "-c", help="e.g. general,news,science,it,packages,repos")
+    # The finance categories are named here because they are the one thing this
+    # instance has that a stock SearXNG does not, and nothing else in --help said
+    # so. Their engines run ONLY when the category is asked for.
+    p.add_argument("--categories", "-c",
+                   help="e.g. general,news,science,it,packages,repos; "
+                        "fork-local: finance (both markets), finance-poland, "
+                        "finance-sweden")
     p.add_argument("--engines", "-e", help="pin engines, e.g. sii,dna rynkow,ksiazak")
     p.add_argument("--language", help="result language, e.g. en,pl")
     p.add_argument("--time-range", help="day|week|month|year")
