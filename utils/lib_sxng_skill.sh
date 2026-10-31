@@ -21,9 +21,10 @@
 #   make skill.check   fail if the two trees differ (skips if the hub is absent)
 #   make skill.test    run the skill's own stdlib unittest suite
 
-# The logic lives in skills/sync.sh, byte-identical to the copy in
+# The logic lives in bin/deploy-skills.sh, byte-identical to the copy in
 # /opt/playground/firecrawl; these targets only delegate to it. It mirrors every
 # skills/<name>/ that holds a SKILL.md, and SKILL_HUB still overrides the hub.
+# Run it directly with no flag to preview: the plan and the drift, nothing written.
 
 # The linter the IDE plugin runs over the agent configs (see .agnix.toml). uvx
 # fetches it — a wheel with a prebuilt binary — so nothing is compiled and
@@ -44,11 +45,11 @@ EOF
 }
 
 skill.sync() {
-    "${REPO_ROOT}/skills/sync.sh" sync
+    "${REPO_ROOT}/bin/deploy-skills.sh" --apply
 }
 
 skill.check() {
-    "${REPO_ROOT}/skills/sync.sh" check
+    "${REPO_ROOT}/bin/deploy-skills.sh" --check
 }
 
 # Found rather than listed, for the same reason skill.validate does it: a glob

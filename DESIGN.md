@@ -44,12 +44,13 @@ The cost is two copies and a sync step, so the sync is a target rather than a ha
 
 | Target | What it does |
 |---|---|
-| `make skill.sync` | `rsync -a --delete --delete-excluded` from `skills/searxng/` to `$SKILL_HUB/searxng/`, excluding `__pycache__` |
-| `make skill.check` | `diff -r` the two trees; non-zero on drift, **skips cleanly** when no hub is present |
+| `make skill.sync` | `bin/deploy-skills.sh --apply`: `rsync -a --delete --delete-excluded` from `skills/searxng/` to `$SKILL_HUB/searxng/`, excluding `__pycache__`, backing up what it replaces |
+| `make skill.check` | `bin/deploy-skills.sh --check`: `diff -r` the two trees; non-zero on drift, **skips cleanly** when no hub is present |
 | `make skill.validate` | agnix over the repo: every `SKILL.md` parses; non-zero on an ERROR, **skips cleanly** when `uvx`/`jq` is absent |
 
-Both targets delegate to `skills/sync.sh`, which is byte-identical to the copy in
-`/opt/playground/firecrawl` and can be run directly. `$SKILL_HUB` defaults to `~/.agents/skills` and is overridable, which is how the
+Both targets delegate to `bin/deploy-skills.sh`, which is byte-identical to the copy in
+`/opt/playground/firecrawl` and can be run directly — with no flag it prints the plan and
+the drift and writes nothing, so a preview never needs a flag. `$SKILL_HUB` defaults to `~/.agents/skills` and is overridable, which is how the
 targets get tested against a scratch directory.
 
 **Run `make skill.sync` after editing the skill.** Nothing else will tell you it is

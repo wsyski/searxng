@@ -20,6 +20,12 @@ code is unmodified in intent; what follows is the delta.
   before re-enabling one — the verdict is IP-specific and time-sensitive.
 - `postman/run.sh` (newman) is the integration smoke test for a running
   instance; use it after any config or image change.
+- `bin/deploy-docker.sh` redeploys it: with no flag it prints the compose files,
+  the image pin and the running set; `--apply` pulls the pinned image and
+  **recreates** the containers. Recreating is the point — the fork's engines and
+  core files are bind-mounted, and a running container keeps the mounts and
+  environment it started with, so `up -d` alone would leave the old code in
+  place without saying so.
 
 ## Two ways this instance answers, and looks fine
 
@@ -146,6 +152,21 @@ and an **empty** `unresponsive_engines`, so there is no error to notice.
 The engine list is published by `/config`. Read that rather than
 `searx/settings.yml` in this repo: the running instance merges the defaults
 bundled in its pinned image, not this working tree.
+
+## Skills
+
+`skills/searxng/` is the one skill this fork authors: it documents this instance
+— its port, its categories, the finance engines that exist only here. It is
+mirrored into the user hub every harness loads from (`~/.agents/skills/searxng`)
+by `bin/deploy-skills.sh`:
+
+    bin/deploy-skills.sh            # preview: the plan and the drift, nothing written
+    bin/deploy-skills.sh --apply    # back up the hub copy, then mirror
+    bin/deploy-skills.sh --check    # drift gate: exit 1 when the hub copy differs
+
+`make skill.sync` and `make skill.check` are the same two runs. Run one after
+editing the skill: the skill is *listed*, so no model loads it unprompted and a
+stale hub copy keeps answering `/searxng` with the old text.
 
 ## Agent instructions
 

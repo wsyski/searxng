@@ -16,6 +16,7 @@ on:
       - master
     paths:
       - skills/**
+      - bin/deploy-skills.sh
       - .agnix.toml
       - utils/lib_sxng_skill.sh
       - Makefile
@@ -25,6 +26,7 @@ on:
       - master
     paths:
       - skills/**
+      - bin/deploy-skills.sh
       - .agnix.toml
       - utils/lib_sxng_skill.sh
       - Makefile

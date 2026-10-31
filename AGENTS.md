@@ -41,7 +41,9 @@ is **not** upstream and is easy to break by merging carelessly.
   After editing it, run `make skill.sync` — without that the hub keeps serving
   the old text and nothing says so, because the skill is *listed*: the model
   never loads it unprompted, so the divergence surfaces only when someone types
-  `/searxng`. `make skill.check` reports drift and exits non-zero. See `DESIGN.md`.
+  `/searxng`. `make skill.check` reports drift and exits non-zero. Both delegate
+  to `bin/deploy-skills.sh`, which with no flag only previews; `--apply` writes.
+  See `DESIGN.md`.
 - **The skill is validated by agnix**, the linter the IDE plugin runs: `make
   skill.validate` fails on any `SKILL.md` that will not parse (an unquoted colon in
   the frontmatter, say) and proves its own pass by planting a broken one. `.agnix.toml`
