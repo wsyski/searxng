@@ -212,7 +212,7 @@ class SiiRequestTests(_SiiEngineTestCase):
         self.assertFalse(self.engine.paging)
 
     def test_the_engine_is_finance_only(self):
-        self.assertEqual(self.engine.categories, ["finance", "finance-poland"])
+        self.assertEqual(self.engine.categories, ["finance", "finance poland"])
 
 
 class SiiParsingTests(_SiiEngineTestCase):

@@ -869,7 +869,7 @@
               ]
             }
           },
-          "description": "searx/engines/dnarynkow.py, a fork-local engine over dnarynkow.pl/spolki/?search=.\nTwo things mislead here. The search is a PARAMETER on the stock index, not a search page:\nthere is no /szukaj route, no WordPress REST API and no sitemap entry, so every path-shaped\nprobe 404s while ?search= works. And the result rows are server-rendered into the HTML body,\nnot into the ~2.5 kB __NUXT_DATA__ payload, so decoding the payload concludes 'client rendered,\nnothing here'. robots.txt names ClaudeBot, Claude-User, Claude-SearchBot and a dozen other AI\nagents under `Allow: /`; only /pulpit is disallowed and is never requested.",
+          "description": "searx/engines/dna_rynkow.py, a fork-local engine over dnarynkow.pl/spolki/?search=.\nTwo things mislead here. The search is a PARAMETER on the stock index, not a search page:\nthere is no /szukaj route, no WordPress REST API and no sitemap entry, so every path-shaped\nprobe 404s while ?search= works. And the result rows are server-rendered into the HTML body,\nnot into the ~2.5 kB __NUXT_DATA__ payload, so decoding the payload concludes 'client rendered,\nnothing here'. robots.txt names ClaudeBot, Claude-User, Claude-SearchBot and a dozen other AI\nagents under `Allow: /`; only /pulpit is disallowed and is never requested.",
           "event": [
             {
               "listen": "test",
@@ -883,7 +883,7 @@
                   "  pm.expect(rs, 'empty result with no unresponsive_engines').to.have.length.above(0);",
                   "});",
                   "pm.test('Every result is a dnarynkow.pl /spolki/ card', () => {",
-                  "  const bad = rs.filter(r => !r || !/^https:\\/\\/dnarynkow\\.pl\\/spolki\\/[a-z0-9-]+\\/$/.test(r.url || '')).map(r => (r||{}).url);",
+                  "  const bad = rs.filter(r => !r || !/^https:\\/\\/dna_rynkow\\.pl\\/spolki\\/[a-z0-9-]+\\/$/.test(r.url || '')).map(r => (r||{}).url);",
                   "  pm.expect(bad, 'not a stock card URL: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
                   "});",
                   "pm.test('Every title carries a ticker in parentheses', () => {",
@@ -942,7 +942,7 @@
                   "  pm.expect(rs, 'empty result with no unresponsive_engines').to.have.length.above(0);",
                   "});",
                   "pm.test('Every result is a dnarynkow.pl /spolki/ card', () => {",
-                  "  const bad = rs.filter(r => !r || !/^https:\\/\\/dnarynkow\\.pl\\/spolki\\/[a-z0-9-]+\\/$/.test(r.url || '')).map(r => (r||{}).url);",
+                  "  const bad = rs.filter(r => !r || !/^https:\\/\\/dna_rynkow\\.pl\\/spolki\\/[a-z0-9-]+\\/$/.test(r.url || '')).map(r => (r||{}).url);",
                   "  pm.expect(bad, 'not a stock card URL: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
                   "});",
                   "pm.test('Every title carries a ticker in parentheses', () => {",
@@ -1001,7 +1001,7 @@
                   "  pm.expect(rs, 'empty result with no unresponsive_engines').to.have.length.above(0);",
                   "});",
                   "pm.test('Every result is a dnarynkow.pl /spolki/ card', () => {",
-                  "  const bad = rs.filter(r => !r || !/^https:\\/\\/dnarynkow\\.pl\\/spolki\\/[a-z0-9-]+\\/$/.test(r.url || '')).map(r => (r||{}).url);",
+                  "  const bad = rs.filter(r => !r || !/^https:\\/\\/dna_rynkow\\.pl\\/spolki\\/[a-z0-9-]+\\/$/.test(r.url || '')).map(r => (r||{}).url);",
                   "  pm.expect(bad, 'not a stock card URL: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
                   "});",
                   "pm.test('Every title carries a ticker in parentheses', () => {",
@@ -1060,7 +1060,7 @@
                   "  pm.expect(rs, 'empty result with no unresponsive_engines').to.have.length.above(0);",
                   "});",
                   "pm.test('Every result is a dnarynkow.pl /spolki/ card', () => {",
-                  "  const bad = rs.filter(r => !r || !/^https:\\/\\/dnarynkow\\.pl\\/spolki\\/[a-z0-9-]+\\/$/.test(r.url || '')).map(r => (r||{}).url);",
+                  "  const bad = rs.filter(r => !r || !/^https:\\/\\/dna_rynkow\\.pl\\/spolki\\/[a-z0-9-]+\\/$/.test(r.url || '')).map(r => (r||{}).url);",
                   "  pm.expect(bad, 'not a stock card URL: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
                   "});",
                   "pm.test('Every title carries a ticker in parentheses', () => {",

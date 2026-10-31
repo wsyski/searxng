@@ -146,7 +146,7 @@ class AktienyheternaRequestTests(_AktienyheternaTestCase):
         self.assertEqual(params["headers"]["User-Agent"], "SearXNG/1.0")
 
     def test_the_engine_is_in_the_swedish_finance_categories(self):
-        self.assertEqual(self.engine.categories, ["finance", "finance-sweden"])
+        self.assertEqual(self.engine.categories, ["finance", "finance sweden"])
 
     def test_paging_is_enabled(self):
         """WordPress pages, and answers 400 past the end - see below."""

@@ -35,10 +35,10 @@ search:
     - html
     - json
 
-# A tab is a selector, not a pipeline: engines in `finance` / `finance-poland` /
-# `finance-sweden` run only when one of those categories is requested
+# A tab is a selector, not a pipeline: engines in `finance` / `finance poland` /
+# `finance sweden` run only when one of those categories is requested
 # (`categories=...`, `-c ...`, or the UI tab). `finance` is international/general
-# finance; `finance-poland` and `finance-sweden` are its per-market subsets, and
+# finance; `finance poland` and `finance sweden` are its per-market subsets, and
 # every finance engine carries `finance` plus exactly one of them. They no longer
 # run in default `general` or `news` searches. Adding a key here replaces the default map wholesale
 # (searx/settings_loader.py:138), so every default tab is copied below.
@@ -54,8 +54,8 @@ categories_as_tabs:
   files:
   social media:
   finance:
-  finance-poland:
-  finance-sweden:
+  finance poland:
+  finance sweden:
 
 outgoing:
   request_timeout: 6.0
@@ -105,15 +105,15 @@ engines:
     shortcut: lf
     categories: it
     disabled: false
-  # The six finance engines below are in the `finance`, `finance-poland` and
-  # `finance-sweden` tabs (see categories_as_tabs above). They do not run in
+  # The six finance engines below are in the `finance`, `finance poland` and
+  # `finance sweden` tabs (see categories_as_tabs above). They do not run in
   # default general/news searches; request the category explicitly
-  # (`-c finance-poland`, `-c finance-sweden`, `!finance-poland`, or the
-  # portfolio jobs' categories=finance-poland / categories=finance-sweden
+  # (`-c 'finance poland'`, `-c 'finance sweden'`, `!finance_poland`, or the
+  # portfolio jobs' categories='finance poland' / categories='finance sweden'
   # calls). The first four are Polish, the last two Swedish; `finance` is the
   # union and is what a question with no market in it should ask for. The
   # per-market split is what keeps each portfolio book stable: a new Swedish
-  # engine joins `finance` and `finance-sweden` and the Polish book does not
+  # engine joins `finance` and `finance sweden` and the Polish book does not
   # change, which is the whole reason the DeGiro job asks for the subset rather
   # than for `finance`.
   # A category this instance does not have selects no engine, so the DEFAULT
@@ -139,7 +139,7 @@ engines:
   # to any realistic agent string, so honesty costs nothing here.
   - name: sii
     engine: sii
-    categories: [finance, finance-poland]
+    categories: [finance, finance poland]
     shortcut: sii
     disabled: false
   # DNA Rynkow (dnarynkow.pl) - per-company cards for ~100 listed names.
@@ -155,8 +155,8 @@ engines:
   # dozen others under `Allow: /`; only /pulpit is disallowed and is never
   # requested here. Coverage is partial - Orlen has no card and returns zero.
   - name: dna rynkow
-    engine: dnarynkow
-    categories: [finance, finance-poland]
+    engine: dna_rynkow
+    categories: [finance, finance poland]
     shortcut: dna
     disabled: false
   # Ksiazak (konradksiazak.pl) - a small office publishing long-form single-company
@@ -168,12 +168,12 @@ engines:
   # Reads the public WordPress REST API rather than scraping HTML.
   - name: ksiazak
     engine: ksiazak
-    categories: [finance, finance-poland]
+    categories: [finance, finance poland]
     shortcut: ksz
     disabled: false
   # Stooq (stooq.com) - a Polish market portal whose /search/ is a PAP *news*
   # index, not an instrument search (ticker lookup is /q/s/, exact-symbol only).
-  # ENABLED, but in the finance and finance-poland categories only (the tabs above):
+  # ENABLED, but in the finance and finance poland categories only (the tabs above):
   #   - robots.txt is `User-agent: * / Disallow: /`; only Bingbot and Googlebot
   #     are allowed. This is the one engine here that ignores that directive.
   #   - the page sits behind a SHA-256 proof-of-work gate and a Google consent
@@ -181,17 +181,17 @@ engines:
   #     cookie set without consent. Both were the operator's explicit decision.
   # Finance-only keeps it out of default news/general searches, including
   # Firecrawl's (SEARXNG_NEWS_CATEGORIES=news). The portfolio requests
-  # categories=finance-poland once a day, which is its scheduled cap; manual
+  # categories='finance poland' once a day, which is its scheduled cap; manual
   # calls:
   #   !stq <terms>                              (UI / HTML search)
-  #   categories=finance-poland&format=json     (API)
+  #   categories='finance poland'&format=json     (API)
   # Measured 2026-10-24; see searx/engines/stooq.py for the full measurement.
   - name: stooq
     engine: stooq
     shortcut: stq
-    categories: [finance, finance-poland]
+    categories: [finance, finance poland]
     disabled: false
-  # --- Swedish subset (`finance` + `finance-sweden`) ---------------------------
+  # --- Swedish subset (`finance` + `finance sweden`) ---------------------------
   # Added 2026-10-30 for the two Avanza books (23 and 17 Swedish names), which
   # had 23 RSS feeds and no way to ask "has anyone written about Gränges".
   # Aktienyheterna (aktienyheterna.se) - a Swedish retail-equity blog, the
@@ -215,7 +215,7 @@ engines:
   # tdm-reservation meta.
   - name: aktienyheterna
     engine: aktienyheterna
-    categories: [finance, finance-sweden]
+    categories: [finance, finance sweden]
     shortcut: akn
     disabled: false
   # Placera (placera.se) - Avanza's editorial site: /nyheter, /analys and the
@@ -249,7 +249,7 @@ engines:
   # the markup); borsvarlden.se serves a certificate with no matching name.
   - name: placera
     engine: placera
-    categories: [finance, finance-sweden]
+    categories: [finance, finance sweden]
     shortcut: pla
     disabled: false
   # News: duckduckgo news, wikinews (default on), qwant news and bing news answer.

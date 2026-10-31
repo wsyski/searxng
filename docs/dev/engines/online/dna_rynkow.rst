@@ -4,5 +4,5 @@
 DNA Rynków
 ============
 
-.. automodule:: searx.engines.dnarynkow
+.. automodule:: searx.engines.dna_rynkow
    :members:

@@ -43,12 +43,12 @@ services:
       # Drop these mounts once the engines are upstream or the pin moves past them.
       - ../searx/engines/liferay_forum.py:/usr/local/searxng/searx/engines/liferay_forum.py:ro
       - ../searx/engines/sii.py:/usr/local/searxng/searx/engines/sii.py:ro
-      - ../searx/engines/dnarynkow.py:/usr/local/searxng/searx/engines/dnarynkow.py:ro
+      - ../searx/engines/dna_rynkow.py:/usr/local/searxng/searx/engines/dna_rynkow.py:ro
       - ../searx/engines/ksiazak.py:/usr/local/searxng/searx/engines/ksiazak.py:ro
       # Opt-in only, disabled in core-config: /search/ is a PAP news index and
       # the site's robots.txt disallows this engine (see its module docstring).
       - ../searx/engines/stooq.py:/usr/local/searxng/searx/engines/stooq.py:ro
-      # Swedish subset (finance + finance-sweden), added 2026-10-30 for the two
+      # Swedish subset (finance + finance sweden), added 2026-10-30 for the two
       # Avanza books. Both read a public search surface with no robots.txt or
       # TDM objection, unlike stooq above.
       - ../searx/engines/aktienyheterna.py:/usr/local/searxng/searx/engines/aktienyheterna.py:ro

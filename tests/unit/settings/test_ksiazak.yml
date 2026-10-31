@@ -8,13 +8,13 @@ use_default_settings:
 
 categories_as_tabs:
   finance:
-  finance-poland:
+  finance poland:
 
 engines:
 
   - name: ksiazak
     engine: ksiazak
-    categories: ["finance", "finance-poland"]
+    categories: ["finance", "finance poland"]
     shortcut: "ksz"
     timeout: 9.0
     disabled: true

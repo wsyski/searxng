@@ -8,12 +8,12 @@ use_default_settings:
 
 categories_as_tabs:
   finance:
-  finance-sweden:
+  finance sweden:
 
 engines:
 
   - name: aktienyheterna
     engine: aktienyheterna
-    categories: ["finance", "finance-sweden"]
+    categories: ["finance", "finance sweden"]
     shortcut: "akn"
     disabled: true

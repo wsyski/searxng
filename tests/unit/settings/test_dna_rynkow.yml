@@ -8,13 +8,13 @@ use_default_settings:
 
 categories_as_tabs:
   finance:
-  finance-poland:
+  finance poland:
 
 engines:
 
   - name: dna rynkow
-    engine: dnarynkow
-    categories: ["finance", "finance-poland"]
+    engine: dna_rynkow
+    categories: ["finance", "finance poland"]
     shortcut: "dna"
     timeout: 9.0
     disabled: true

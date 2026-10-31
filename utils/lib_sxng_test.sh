@@ -80,7 +80,17 @@ test.pyright() {
 test.pyright_modified() {
     build_msg TEST "[basedpyright] static type check of local modified files"
     local pyrigth_files=()
-    readarray -t pyrigth_files < <(git status --porcelain | awk 'match($2,".py[i]*$") {print $2}')
+    # FORK (2026-10-31): read the path AFTER a rename arrow, and keep only files
+    # that still exist. `git status --porcelain` prints a rename as
+    # `R  old.py -> new.py`, so the old awk took $2 - the path that was just
+    # renamed away - and basedpyright exited 4 with "does not exist". The first
+    # .py rename in this fork (dnarynkow.py -> dna_rynkow.py) is what found it.
+    readarray -t pyrigth_files < <(
+        git status --porcelain \
+            | sed -e 's/^...//' -e 's/^.* -> //' \
+            | grep -E '\.pyi?$' \
+            | while IFS= read -r f; do [ -f "$f" ] && printf '%s\n' "$f"; done
+    )
     if [ ${#pyrigth_files[@]} -eq 0 ]; then
         echo "there are no locally modified python files that could be checked"
     else
@@ -98,7 +108,7 @@ test.pyright_modified() {
         # produces ~120 reportUnknown*/reportMissingParameterType findings on
         # the four fork engines alone, none of them defects. Errors are, and
         # they are what catches defects: reportOptionalMemberAccess on
-        # dnarynkow.py's _ticker was a real double-regex-call smell that no
+        # dna_rynkow.py's _ticker was a real double-regex-call smell that no
         # unit test could see.
         #
         # Why not gate the whole tree: `basedpyright --level error` over the

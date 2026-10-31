@@ -33,7 +33,7 @@ def _rows(results):
 
     ``EngineResults`` yields the base ``Result`` type, whose fields are the
     engine-agnostic ones; ``title``, ``content`` and ``publishedDate`` belong to
-    ``LegacyResult``, which is what ``dnarynkow.response`` adds. Narrowing once
+    ``LegacyResult``, which is what ``dna_rynkow.response`` adds. Narrowing once
     here keeps the assertions below reading as assertions.
     """
     return [cast(LegacyResult, r) for r in results]
@@ -105,7 +105,7 @@ def _resp(text, status_code=200):
 
 class DnaRynkowEngineTests(SearxTestCase):
 
-    TEST_SETTINGS = "test_dnarynkow.yml"
+    TEST_SETTINGS = "test_dna_rynkow.yml"
 
     def setUp(self):
         super().setUp()
@@ -214,4 +214,4 @@ class DnaRynkowEngineTests(SearxTestCase):
         self.assertIsNone(rows[1].publishedDate)
 
     def test_the_category_is_finance(self):
-        self.assertEqual(self.engine.categories, ["finance", "finance-poland"])
+        self.assertEqual(self.engine.categories, ["finance", "finance poland"])

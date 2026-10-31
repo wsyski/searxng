@@ -8,13 +8,13 @@ use_default_settings:
 
 categories_as_tabs:
   finance:
-  finance-poland:
+  finance poland:
 
 engines:
 
   - name: sii
     engine: sii
-    categories: ["finance", "finance-poland"]
+    categories: ["finance", "finance poland"]
     shortcut: "sii"
     timeout: 9.0
     disabled: true

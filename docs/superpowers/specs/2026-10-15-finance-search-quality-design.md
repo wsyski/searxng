@@ -28,7 +28,7 @@ rows also land in **every** default search — including `ECB interest rate`, wh
 of 96 results — and therefore in Firecrawl's search provider. A coverage pass that reads a `sii`
 hit as "an analyst wrote about this company" is wrong whenever the query has a second word.
 
-Secondary: `sii.py` and `dnarynkow.py` interpolate the raw query into the URL
+Secondary: `sii.py` and `dna_rynkow.py` interpolate the raw query into the URL
 (`f"...?search={query}"`). `ksiazak.py` and `liferay_forum.py` use `urlencode`. A query with
 `&`, `#` or `+` (`AT&T`, `C#`) is cut or reinterpreted by the site.
 
@@ -90,7 +90,7 @@ carries its `engines`.
 | D1 | `sii` keeps a row only when **every query term** appears in its title or teaser, compared case- and diacritic-insensitively (`ł`→`l` handled explicitly; NFKD leaves it alone) | The site's OR semantics cannot be changed. A filter in `response()` is the only place that sees both the query (`resp.search_params["query"]`) and the row. Title+teaser, not the article body, because that is what the engine has. |
 | D2 | Single-term queries are filtered the same way | Consistent semantics; a one-word query whose word is absent from title and teaser was a fragment match. |
 | D3 | `sii` stays in `[news, general]` | Removing it from `general` would undo the reachability fix of `e5059452c`. With D1 it no longer injects unrelated rows. |
-| D4 | `sii` and `dnarynkow` build URLs with `urlencode` | Same as the two other fork engines. |
+| D4 | `sii` and `dna_rynkow` build URLs with `urlencode` | Same as the two other fork engines. |
 | D5 | Enable `bing news` in `core-config/settings.yml`, with `enable_http3: false`, and the probe date and numbers in the comment | The only loaded news engine with `time_range_support`. The `enable_http3` key is the extra half added after re-measuring on 2026-10-15: HTTP/3 over QUIC is blocked on this egress, and that — not bing — was the "connection error". Re-probe rule from the file's header applies. |
 | D6 | `sxq` warns when (a) results come from engines that were not pinned, (b) a time range was set and the response is empty with no unresponsive engines | Both are silent failures the tool can name. It does not change results, only stderr. |
 | D7 | Postman gets a negative control per defect | `zzqxv term` on `sii` → 0; `-c news` + `time_range=week` → >0 and from `bing news`. The existing `SII: multi-word company name (cd projekt)` asserts every row contains both terms. |
@@ -112,6 +112,6 @@ carries its `engines`.
 - **D1 can hide a real result** whose title and teaser use a synonym or abbreviation of a query
   term (`PKN` for `Orlen`). Accepted: a missed hit is visible as a gap; a false hit reads as
   coverage. Ticker-and-name queries are the portfolio's use, and both forms can be issued.
-- **The container runs the pinned image.** `sii.py` and `dnarynkow.py` are bind-mounted; the
+- **The container runs the pinned image.** `sii.py` and `dna_rynkow.py` are bind-mounted; the
   change is inert until `docker restart searxng-core`, and verification is against the
   container, not the repo.

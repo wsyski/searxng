@@ -137,7 +137,7 @@ class PlaceraRequestTests(_PlaceraTestCase):
         self.assertFalse(self.engine.paging)
 
     def test_the_engine_is_in_the_swedish_finance_categories(self):
-        self.assertEqual(self.engine.categories, ["finance", "finance-sweden"])
+        self.assertEqual(self.engine.categories, ["finance", "finance sweden"])
 
 
 class PlaceraStatusTests(_PlaceraTestCase):

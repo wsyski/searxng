@@ -46,7 +46,7 @@ about = {
     "results": "JSON",
 }
 
-categories = ["finance", "finance-poland"]
+categories = ["finance", "finance poland"]
 paging = True
 
 base_url = "https://konradksiazak.pl"

@@ -21,28 +21,28 @@ provenance. These four were re-run on 2026-10-15 because the work that day could
 `sii` also changed behaviour rather than count: it drops any row missing a query term. It used
 to contribute to `general`; since 2026-10-24 it is `finance` only.
 
-## finance, finance-poland and finance-sweden
+## finance, finance poland and finance sweden
 
 `sii`, `dna rynkow`, `ksiazak` and `stooq` moved out of `general`/`news` into **both** `finance`
-(international/general finance) and `finance-poland` (the Polish subset). They run only when one
-of those categories is requested (`-c finance`, `-c finance-poland`, the tabs, or the portfolio
-job's explicit `categories=finance-poland` call). Measured 2026-10-24 after stooq was enabled:
-`-c finance-poland` + `q=orlen` returned **20 rows**, from `sii`, `ksiazak` and `stooq`;
+(international/general finance) and `finance poland` (the Polish subset). They run only when one
+of those categories is requested (`-c finance`, `-c 'finance poland'`, the tabs, or the portfolio
+job's explicit `categories='finance poland'` call). Measured 2026-10-24 after stooq was enabled:
+`-c 'finance poland'` + `q=orlen` returned **20 rows**, from `sii`, `ksiazak` and `stooq`;
 `dna rynkow` has no Orlen card and returned zero. The `general` and `news` rows in the matrix
 above are pre-move — subtract these engines from any post-move count. The earlier `polish-equity`
-idea is realized as `finance-poland`: the hyphenated name sorts beside `finance` and works in
-`-c`/API/tab, but `!finance-poland` is not a bang (SearXNG rewrites `-` in bangs).
+idea is realized as `finance poland`: the hyphenated name sorts beside `finance` and works in
+`-c`/API/tab, but `!finance_poland` is not a bang (SearXNG rewrites `-` in bangs).
 
-`finance-sweden` (new 2026-10-30) is the Swedish subset, added for the two Avanza books, which
+`finance sweden` (new 2026-10-30) is the Swedish subset, added for the two Avanza books, which
 carry ~23 and ~17 Swedish names and had 23 RSS feeds but no way to ask "has anyone written about
 Gränges". It holds `aktienyheterna` (`!akn`) and `placera` (`!pla`), both also in `finance`, so
 `finance` is now the union of the two markets rather than a synonym for the Polish set. Measured
 2026-10-30:
 
 ```
--c finance-sweden  q=granges   ->  65 rows   placera 100 site rows, 35 dropped; aktienyheterna 2 site, 2 dropped
--c finance-sweden  q=swedbank  -> 109 rows   placera 99 site, 0 dropped; aktienyheterna 10 site, 0 dropped
--c finance-sweden  q=cloetta   ->  84 rows   placera 100 site, 19 dropped; aktienyheterna 3 site, 0 dropped
+-c 'finance sweden'  q=granges   ->  65 rows   placera 100 site rows, 35 dropped; aktienyheterna 2 site, 2 dropped
+-c 'finance sweden'  q=swedbank  -> 109 rows   placera 99 site, 0 dropped; aktienyheterna 10 site, 0 dropped
+-c 'finance sweden'  q=cloetta   ->  84 rows   placera 100 site, 19 dropped; aktienyheterna 3 site, 0 dropped
 ```
 
 Both engines publish `dropped_rows`/`site_rows` through `engine_data`, as `sii` does, so a JSON
@@ -54,15 +54,15 @@ aktienyheterna correctly answers zero for Gränges.
 
 ## Opt-in: stooq
 
-`stooq` (`!stq`) is registered in **both** `finance` and `finance-poland` and is **enabled**, so
+`stooq` (`!stq`) is registered in **both** `finance` and `finance poland` and is **enabled**, so
 either category calls it; `-c news` and default general queries do not. It wraps stooq.com's
 `/search/`, a PAP **news** index — not ticker lookup, which is `/q/s/` and exact-symbol only. The
 site's `robots.txt` allows only Bingbot and Googlebot, and the page is behind a SHA-256
 proof-of-work gate and a Google consent wall; the engine clears both. The portfolio requests
-`categories=finance-poland` once per day (the scheduled cap); pin it manually with either form:
+`categories='finance poland'` once per day (the scheduled cap); pin it manually with either form:
 
 ```bash
-sxq orlen -c finance-poland
+sxq orlen -c 'finance poland'
 sxq orlen -e stooq
 ```
 
@@ -253,7 +253,7 @@ an unknown category selects no engine at all, so the default search runs and `un
 stays empty — nothing in the response mentions the category. Measured 2026-10-30:
 
 ```
-categories=finance-poland ->  21 rows from sii, stooq, dna rynkow
+categories='finance poland' ->  21 rows from sii, stooq, dna rynkow
                               "unknown_categories": []
 categories=finance-polnd  ->  36 rows from mwmbl, duckduckgo web, yahoo
                               "unknown_categories": ["finance-polnd"]

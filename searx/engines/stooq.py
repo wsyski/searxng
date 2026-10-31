@@ -30,11 +30,11 @@ separate source.
        User-agent: *
        Disallow: /
 
-   This engine is **enabled, but in ``finance`` and ``finance-poland`` only**.
+   This engine is **enabled, but in ``finance`` and ``finance poland`` only**.
    Its content is news; the categories keep it out of default ``general`` and
    ``news`` queries. ``finance`` is the international/general category and
-   ``finance-poland`` its Polish subset. The portfolio requests
-   ``finance-poland`` once per day, and the finance record is the job's
+   ``finance poland`` its Polish subset. The portfolio requests
+   ``finance poland`` once per day, and the finance record is the job's
    once-a-day cap; a manual category query is an explicit request and is not
    capped by the job. Do not add it to ``news``.
 
@@ -97,7 +97,7 @@ about = {
     "results": "HTML",
 }
 
-categories = ["finance", "finance-poland"]
+categories = ["finance", "finance poland"]
 paging = True
 
 base_url = "https://stooq.com"
@@ -115,7 +115,7 @@ _ITEM_RE = re.compile(
 _DATE_RE = re.compile(r"<span class=lc1>(.*?)</span>", re.S)
 _DATE_PARTS_RE = re.compile(r"(\d{1,2}) (\w{3}) (\d{4}), (\d{1,2}):(\d{2})")
 
-# Polish three-letter month abbreviations, same trap as dnarynkow.py: strptime
+# Polish three-letter month abbreviations, same trap as dna_rynkow.py: strptime
 # under an English locale does not know them.
 _MONTHS = {
     "sty": 1,

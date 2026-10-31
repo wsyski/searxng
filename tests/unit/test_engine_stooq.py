@@ -156,7 +156,7 @@ class StooqEngineTests(SearxTestCase):
         self.assertTrue(self.engine.paging)
 
     def test_the_category_is_finance_only(self):
-        self.assertEqual(self.engine.categories, ["finance", "finance-poland"])
+        self.assertEqual(self.engine.categories, ["finance", "finance poland"])
 
     # -- the proof-of-work gate ----------------------------------------------
 

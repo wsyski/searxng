@@ -187,7 +187,7 @@ against production default settings. Always pass `tests.unit....`.
     engines alone, none of them defects. Gating on warnings would be noise.
 
   Errors are what catch defects, and this did: `reportOptionalMemberAccess`
-  on `dnarynkow.py`'s `_ticker` — the same regex run twice, guard deciding on
+  on `dna_rynkow.py`'s `_ticker` — the same regex run twice, guard deciding on
   one call and body dereferencing the other — was a real smell no unit test
   could see. It is fixed.
 
@@ -372,7 +372,7 @@ changes to the base file do not conflict.
   | pyc | flags | mtime | effect |
   |---|---|---|---|
   | `searx/engines/__pycache__/sii.cpython-314.pyc` | 0 | today | fork-local module, absent from the image, compiled from the mount on first import — **the mount worked** |
-  | `stooq`, `ksiazak`, `dnarynkow`, `liferay_forum` | 0 | today | same |
+  | `stooq`, `ksiazak`, `dna_rynkow`, `liferay_forum` | 0 | today | same |
   | `searx/engines/__pycache__/github.cpython-314.pyc` | 1 | image build | upstream module, baked — **the fork's token patch never ran** |
   | `searx/__pycache__/webutils`, `webadapter`, `search/models` | 1 | image build | baked — any mount of these is inert |
 
@@ -420,10 +420,10 @@ changes to the base file do not conflict.
   Anything edited under `searx/` here is inert until it is bind-mounted in
   `docker-compose.override.yml`, and that failure is silent: the repo looks
   patched while the container keeps the image's copy. Currently mounted —
-  `searx/engines/`: `liferay_forum.py`, `sii.py`, `dnarynkow.py`, `ksiazak.py`,
+  `searx/engines/`: `liferay_forum.py`, `sii.py`, `dna_rynkow.py`, `ksiazak.py`,
   `aktienyheterna.py`, `placera.py` (fork-local; the last two in
-  `finance`/`finance-sweden`), `stooq.py` (fork-local, enabled in
-  `finance`/`finance-poland`; see `README.md`) and `github.py` (an upstream engine patched fork-side to read
+  `finance`/`finance sweden`), `stooq.py` (fork-local, enabled in
+  `finance`/`finance poland`; see `README.md`) and `github.py` (an upstream engine patched fork-side to read
   the GitHub token from the environment); plus three core files for the JSON
   response fields — `searx/webadapter.py`, `searx/webutils.py` and
   `searx/search/models.py`.
@@ -558,7 +558,7 @@ changes to the base file do not conflict.
   level up, and it is quieter.** `parse_category_form` drops an unknown
   `categories=` name, which leaves the category list empty — and an empty list
   means the *default* search. Measured 2026-10-30: `categories=finance-polnd`
-  (one letter off `finance-poland`) answered 36 rows from `mwmbl`,
+  (one letter off `finance poland`) answered 36 rows from `mwmbl`,
   `duckduckgo web` and `yahoo`, with `unknown_engines` empty, because no engine
   was pinned. Nothing in the response mentioned the category at all.
 

@@ -10,27 +10,27 @@ The question a small analyst office answers. Sparse by design — empty is the n
 a hit means a dedicated analyst picked that company.
 
 ```bash
-sxq orlen -c finance-poland
+sxq orlen -c 'finance poland'
 ```
 
 Returns SII's *Spółka tygodnia* note on ORLEN, plus a Książak note that mentions ORLEN inside
 its body (the company is **not** in that title — WordPress `search` matches body text).
 
-The `finance-poland` category fans out to all four Polish engines; SearXNG runs them concurrently
-and caches. The engines are in `finance` and `finance-poland` only, so a default general/news query
+The `finance poland` category fans out to all four Polish engines; SearXNG runs them concurrently
+and caches. The engines are in `finance` and `finance poland` only, so a default general/news query
 does not reach them.
 
-For a Swedish name use `-c finance-sweden` (`aktienyheterna`, `placera`), which the Avanza books
+For a Swedish name use `-c 'finance sweden'` (`aktienyheterna`, `placera`), which the Avanza books
 ask for the same way. `-c finance` is the union of both markets and is the right ask when the
 question names no market.
 
 ```bash
-sxq granges -c finance-sweden
+sxq granges -c 'finance sweden'
 ```
 
 Both Swedish engines filter the site's own fuzzy matching: a row is kept only when every query
 term appears as a whole word in what the engine can see of it. So an empty answer from
-`finance-sweden` means "nobody wrote about this name", not "the engine is broken" — check
+`finance sweden` means "nobody wrote about this name", not "the engine is broken" — check
 `engine_data.<name>.site_rows` to tell the two apart.
 
 **Check `.unresponsive_engines` before recording "no coverage".** All three are rate-limited or
@@ -44,11 +44,11 @@ sxq kghm -c news
 ```
 
 `sii` is **not** in `news` any more; it runs only in `finance`. For company coverage use
-`sxq kghm -c finance-poland`. A `sii` row always carries every query term in its title or teaser, so a
+`sxq kghm -c 'finance poland'`. A `sii` row always carries every query term in its title or teaser, so a
 hit there names its company.
 
 `stooq` is **not** in `news`; it is in `finance` only, because its site disallows crawling.
-`sxq kghm -c finance-poland` includes it, and so does the portfolio's daily finance request; a manual
+`sxq kghm -c 'finance poland'` includes it, and so does the portfolio's daily finance request; a manual
 call is explicit, so keep those sparse.
 
 **`--time-range` works on a news query now** (as of 2026-10-15; this paragraph used to say the

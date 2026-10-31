@@ -8,13 +8,13 @@ use_default_settings:
 
 categories_as_tabs:
   finance:
-  finance-poland:
+  finance poland:
 
 engines:
 
   - name: stooq
     engine: stooq
-    categories: ["finance", "finance-poland"]
+    categories: ["finance", "finance poland"]
     shortcut: "stq"
     timeout: 9.0
     disabled: false

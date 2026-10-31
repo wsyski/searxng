@@ -105,13 +105,13 @@ changing anything:
 
 These five, and stooq below, are in **both `finance` and a per-market subset** —
 not `general` or `news`. `finance` is the international/general finance category
-and the **union** of the subsets; `finance-poland` holds `sii`, `dna rynkow`,
-`ksiazak` and `stooq`, and `finance-sweden` holds `aktienyheterna` and
+and the **union** of the subsets; `finance poland` holds `sii`, `dna rynkow`,
+`ksiazak` and `stooq`, and `finance sweden` holds `aktienyheterna` and
 `placera`. A default search no longer runs them; request a category explicitly
-(`-c finance` / `-c finance-poland` / `-c finance-sweden` or the tabs). The
-portfolio's DeGiro news pass asks for `finance-poland` once per day for the
+(`-c finance` / `-c 'finance poland'` / `-c 'finance sweden'` or the tabs). The
+portfolio's DeGiro news pass asks for `finance poland` once per day for the
 highest-weight uncovered holding, and the two Avanza books ask
-`finance-sweden` the same way, once per book per day.
+`finance sweden` the same way, once per book per day.
 
 Both Swedish engines publish `dropped_rows`/`site_rows` through `engine_data`,
 as `sii` does: an empty answer with `site_rows` set means "nobody wrote about
@@ -120,7 +120,7 @@ this name", and a missing `engine_data.<name>` key means the engine never ran.
 One fork-local finance engine is not a company source. `stooq` (`!stq`) wraps
 stooq.com's `/search/`, which is a Polish **news** index of PAP items, not a
 ticker lookup (`/q/s/` matches symbols only). It is **enabled in
-`finance`/`finance-poland` only**, so it never joins ordinary news/general searches —
+`finance`/`finance poland` only**, so it never joins ordinary news/general searches —
 including Firecrawl's — and runs when that category is requested. The portfolio
 requests it once per day; a manual `-c finance` is an explicit request. That is
 deliberate: the site's `robots.txt` allows only Bingbot and Googlebot, and the

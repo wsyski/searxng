@@ -4,7 +4,7 @@
 
 **Goal:** Stop the instance from returning finance results that look healthy and are not: `sii` rows that match one word of a multi-word query, news searches with a time range that silently return zero, and pinned-engine searches that silently run the default engines.
 
-**Architecture:** Two fork engine fixes (`searx/engines/sii.py`, `searx/engines/dnarynkow.py`), one settings change (`container/core-config/settings.yml`), two diagnostics in the skill's `sxq`, and Postman negative controls. No upstream file changes. The container runs the pinned upstream image with the fork engines bind-mounted, so every engine change is verified **inside the container** after a restart.
+**Architecture:** Two fork engine fixes (`searx/engines/sii.py`, `searx/engines/dna_rynkow.py`), one settings change (`container/core-config/settings.yml`), two diagnostics in the skill's `sxq`, and Postman negative controls. No upstream file changes. The container runs the pinned upstream image with the fork engines bind-mounted, so every engine change is verified **inside the container** after a restart.
 
 **Tech Stack:** Python 3.11+ (SearXNG engine API), nose2 via `./manage`, newman (`postman/run.sh`), docker compose.
 
@@ -72,12 +72,12 @@ No commit.
 
 ---
 
-### Task 1: URL-encode the query in `sii` and `dnarynkow`
+### Task 1: URL-encode the query in `sii` and `dna_rynkow`
 
 **Files:**
 - Modify: `searx/engines/sii.py` (`request`)
-- Modify: `searx/engines/dnarynkow.py` (`request`)
-- Test: `tests/unit/test_engine_sii.py`, `tests/unit/test_engine_dnarynkow.py`
+- Modify: `searx/engines/dna_rynkow.py` (`request`)
+- Test: `tests/unit/test_engine_sii.py`, `tests/unit/test_engine_dna_rynkow.py`
 
 - [x] **Step 1: Write the failing tests**
 
@@ -104,7 +104,7 @@ In the DNA test class:
 - [x] **Step 2: Run, see both fail**
 
 ```bash
-./manage pyenv.cmd python -m nose2 -v -s tests/unit tests.unit.test_engine_sii tests.unit.test_engine_dnarynkow
+./manage pyenv.cmd python -m nose2 -v -s tests/unit tests.unit.test_engine_sii tests.unit.test_engine_dna_rynkow
 ```
 
 Expected: the two new tests FAIL with `search=AT&T` in the URL.
@@ -119,7 +119,7 @@ def request(query, params):
     params["url"] = f"{base_url}/szukaj?" + urlencode({"search": query})
 ```
 
-(keep the rest of the function as is). `dnarynkow.py`:
+(keep the rest of the function as is). `dna_rynkow.py`:
 
 ```python
     params["url"] = f"{base_url}/spolki/?" + urlencode({"search": query, "page": page})
@@ -130,7 +130,7 @@ def request(query, params):
 - [x] **Step 5: Commit**
 
 ```bash
-git add searx/engines/sii.py searx/engines/dnarynkow.py tests/unit/test_engine_sii.py tests/unit/test_engine_dnarynkow.py
+git add searx/engines/sii.py searx/engines/dna_rynkow.py tests/unit/test_engine_sii.py tests/unit/test_engine_dna_rynkow.py
 git commit -m "Encode the query in the sii and dna rynkow request URLs"
 ```
 
@@ -265,7 +265,7 @@ git commit -m "Drop sii rows that do not contain every query term"
 ```bash
 docker restart searxng-core
 docker exec searxng-core grep -c '_fold' /usr/local/searxng/searx/engines/sii.py   # expect >= 2
-docker exec searxng-core grep -c 'urlencode' /usr/local/searxng/searx/engines/dnarynkow.py  # expect >= 1
+docker exec searxng-core grep -c 'urlencode' /usr/local/searxng/searx/engines/dna_rynkow.py  # expect >= 1
 ```
 
 - [x] **Step 2: Live controls (spaced for the rate limit)**

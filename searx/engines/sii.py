@@ -115,7 +115,7 @@ about = {
     "results": "HTML",
 }
 
-categories = ["finance", "finance-poland"]
+categories = ["finance", "finance poland"]
 paging = False
 
 base_url = "https://www.sii.org.pl"

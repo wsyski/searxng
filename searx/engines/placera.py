@@ -98,7 +98,7 @@ about = {
     "results": "HTML",
 }
 
-categories = ["finance", "finance-sweden"]
+categories = ["finance", "finance sweden"]
 # See the docstring: page/p/offset are all no-ops, so this is False rather
 # than True-and-broken.
 paging = False

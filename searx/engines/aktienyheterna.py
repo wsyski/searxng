@@ -76,7 +76,7 @@ about = {
     "results": "JSON",
 }
 
-categories = ["finance", "finance-sweden"]
+categories = ["finance", "finance sweden"]
 paging = True
 
 base_url = "https://www.aktienyheterna.se"

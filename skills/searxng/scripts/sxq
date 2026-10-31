@@ -332,8 +332,8 @@ def main() -> None:
     # so. Their engines run ONLY when the category is asked for.
     p.add_argument("--categories", "-c",
                    help="e.g. general,news,science,it,packages,repos; "
-                        "fork-local: finance (both markets), finance-poland, "
-                        "finance-sweden")
+                        "fork-local: finance (both markets), finance poland, "
+                        "finance sweden")
     p.add_argument("--engines", "-e", help="pin engines, e.g. sii,dna rynkow,ksiazak")
     p.add_argument("--language", help="result language, e.g. en,pl")
     p.add_argument("--time-range", help="day|week|month|year")
