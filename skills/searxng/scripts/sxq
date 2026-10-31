@@ -77,9 +77,19 @@ def endpoint(explicit: str | None) -> tuple[str, str]:
     """
     if explicit:
         return explicit.rstrip("/"), "--url"
-    env = os.environ.get("SEARXNG_URL")
-    if env:
-        return env.rstrip("/"), "SEARXNG_URL"
+    # SEARXNG_ENDPOINT first, and the order is not cosmetic: SEARXNG_URL is a
+    # REGISTERED Hermes tool variable (hermes_cli/config_defaults.py), so
+    # local_env_policy's provider blocklist strips it from every child
+    # environment Hermes builds - a terminal spawn, execute_code, a no_agent
+    # cron job. Inside an agent this script therefore never saw that variable
+    # and silently took the built-in default below, which is right on the host
+    # it was written for and wrong everywhere else. SEARXNG_ENDPOINT is
+    # unregistered (so it survives) and is already what Firecrawl's own .env
+    # calls this same instance.
+    for name in ("SEARXNG_ENDPOINT", "SEARXNG_URL"):
+        env = (os.environ.get(name) or "").strip()
+        if env:
+            return env.rstrip("/"), name
     return DEFAULT_URL, "the built-in default"
 
 
@@ -315,7 +325,8 @@ def main() -> None:
         epilog="Snippets are not sources: quote or analyse a page with firecrawl scrape or defuddle.",
     )
     p.add_argument("query", nargs="?", help="search terms")
-    p.add_argument("--url", help="override the instance (default: $SEARXNG_URL)")
+    p.add_argument("--url",
+                   help="override the instance (default: $SEARXNG_ENDPOINT, then $SEARXNG_URL)")
     # The finance categories are named here because they are the one thing this
     # instance has that a stock SearXNG does not, and nothing else in --help said
     # so. Their engines run ONLY when the category is asked for.

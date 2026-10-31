@@ -32,6 +32,7 @@ import os
 import sys
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 _loader = importlib.machinery.SourceFileLoader("sxq", os.path.join(HERE, "..", "scripts", "sxq"))
@@ -118,6 +119,40 @@ class Diagnostics(unittest.TestCase):
     def test_non_empty_time_range_result_is_quiet(self):
         payload = {"results": [{"engines": ["bing news"]}], "unresponsive_engines": []}
         self.assertEqual(self._err(sxq.report_empty_time_range, payload, "week"), "")
+
+
+class Endpoint(unittest.TestCase):
+    """Which variable names the instance, and in which order.
+
+    `SEARXNG_URL` is a registered Hermes tool variable, so Hermes strips it
+    from every child environment it builds: inside an agent this script saw
+    nothing and fell through to the built-in default, which is correct only on
+    the host it was written for. `SEARXNG_ENDPOINT` is unregistered.
+    """
+
+    def test_the_generic_name_wins(self):
+        with mock.patch.dict(os.environ, {"SEARXNG_ENDPOINT": "http://lan:8888",
+                                          "SEARXNG_URL": "http://other:8888"}, clear=True):
+            self.assertEqual(sxq.endpoint(None), ("http://lan:8888", "SEARXNG_ENDPOINT"))
+
+    def test_the_registered_name_is_still_honoured(self):
+        with mock.patch.dict(os.environ, {"SEARXNG_URL": "http://other:8888"}, clear=True):
+            self.assertEqual(sxq.endpoint(None), ("http://other:8888", "SEARXNG_URL"))
+
+    def test_explicit_url_beats_both(self):
+        with mock.patch.dict(os.environ, {"SEARXNG_ENDPOINT": "http://lan:8888"}, clear=True):
+            self.assertEqual(sxq.endpoint("http://cli:8888/"), ("http://cli:8888", "--url"))
+
+    def test_an_empty_value_falls_through(self):
+        with mock.patch.dict(os.environ, {"SEARXNG_ENDPOINT": "",
+                                          "SEARXNG_URL": "http://other:8888"}, clear=True):
+            self.assertEqual(sxq.endpoint(None)[1], "SEARXNG_URL")
+
+    def test_neither_set_names_the_default_as_the_origin(self):
+        with mock.patch.dict(os.environ, {}, clear=True):
+            url, origin = sxq.endpoint(None)
+            self.assertEqual(url, sxq.DEFAULT_URL)
+            self.assertEqual(origin, "the built-in default")
 
 
 class Wiring(unittest.TestCase):

@@ -12,7 +12,10 @@ metadata:
 SearXNG runs from `/opt/playground/searxng`, container `searxng-core`, published on
 `192.168.1.100:8888`. Firecrawl searches through the same instance via `SEARXNG_ENDPOINT`.
 
-- Endpoint: `${SEARXNG_URL:-http://192.168.1.100:8888}`
+- Endpoint: `${SEARXNG_ENDPOINT:-${SEARXNG_URL:-http://192.168.1.100:8888}}` — prefer
+  `SEARXNG_ENDPOINT`: `SEARXNG_URL` is a registered Hermes tool variable, so Hermes strips it from
+  a terminal, `execute_code` or cron child and the fallback address is used without a word. `sxq`
+  names which of the three it used.
 - No API key. JSON is enabled; always pass `format=json`.
 - Published on the LAN address, not loopback. `localhost:8888` is refused by the host.
 - Engine and category counts are not stable. Read them from `sxq --health`, not from here.
@@ -51,7 +54,7 @@ needs the `from-to term` form: `sxq "en-pl dog" -c translate`, not a bare word.
 For fields `sxq` does not print (`infoboxes`, `publishedDate`, raw `score`):
 
 ```bash
-SX="${SEARXNG_URL:-http://192.168.1.100:8888}"
+SX="${SEARXNG_ENDPOINT:-${SEARXNG_URL:-http://192.168.1.100:8888}}"
 curl -s -G "$SX/search" --data-urlencode "q=<query>" --data-urlencode format=json \
   | jq '.results[:10][] | {title, url, content, engines}'
 ```
