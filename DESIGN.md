@@ -417,6 +417,14 @@ changes to the base file do not conflict.
   the HTML results page shows. **Re-run all four diffs whenever
   `SEARXNG_VERSION` in `container/.env` moves.**
 
+  **Re-run 2026-11-06, pin moved to `2026.11.5-3e95f6cd2`** (the upstream HEAD
+  merged that day). Diffed against the pristine image
+  (`docker run --rm --entrypoint cat <image> …`) and `git show upstream/master:`:
+  all four core files and `github.py` are byte-identical to upstream, so each
+  mount now differs from the image only by its fork hunks. `searx/webapp.py`
+  is now identical too — the `/image_proxy` mismatch above was the old pin — but
+  it carries no fork change, so it stays unmounted.
+
 - **The container runs the pinned upstream image, not this repo's source.**
   Anything edited under `searx/` here is inert until it is bind-mounted in
   `docker-compose.override.yml`, and that failure is silent: the repo looks
@@ -548,9 +556,9 @@ changes to the base file do not conflict.
     together: the filtered names, and the refs that do reach
     `validate_engineref_list` naming no loaded engine (a `!bang`).
   - They ride on `SearchQuery.unknown_engines` (`searx/search/models.py`) rather
-    than through `webapp.py`. That keeps `searx/webapp.py` untouched — it is the
-    one file in this path that is **not** byte-identical to the pinned image and
-    therefore cannot be mounted. Deliberately excluded from `__eq__` and
+    than through `webapp.py`. That keeps `searx/webapp.py` untouched — under the
+    2026-10 pin it was the one file in this path that was **not** byte-identical
+    to the image, and keeping it fork-free means it never needs a mount. Deliberately excluded from `__eq__` and
     `__hash__`: two queries that run the same engines are the same query whatever
     a client misspelt.
   - `searx/webutils.py` `get_json_response` serialises it.
