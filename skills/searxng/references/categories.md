@@ -52,22 +52,20 @@ sources rank near-misses in (placera returns press releases about *grants*; akti
 returns two Spendrups posts naming **Grängesberg**, a town), and both engines drop them, so
 aktienyheterna correctly answers zero for Gränges.
 
-## Opt-in: stooq
+## stooq
 
 `stooq` (`!stq`) is registered in **both** `finance` and `finance poland` and is **enabled**, so
 either category calls it; `-c news` and default general queries do not. It wraps stooq.com's
 `/search/`, a PAP **news** index — not ticker lookup, which is `/q/s/` and exact-symbol only. The
-site's `robots.txt` allows only Bingbot and Googlebot, and the page is behind a SHA-256
-proof-of-work gate and a Google consent wall; the engine clears both. The portfolio requests
-`categories='finance poland'` once per day (the scheduled cap); pin it manually with either form:
+page is behind a SHA-256 proof-of-work gate and a Google consent wall; the engine clears both.
+Pin it manually with either form:
 
 ```bash
 sxq orlen -c 'finance poland'
 sxq orlen -e stooq
 ```
 
-Rows carry a Polish `publishedDate`; a query with no matches is zero results, not an error. Do not
-add it to `-c news` — Firecrawl's news searches use that category too.
+Rows carry a Polish `publishedDate`; a query with no matches is zero results, not an error.
 
 ## What works
 

@@ -47,9 +47,8 @@ sxq kghm -c news
 `sxq kghm -c 'finance poland'`. A `sii` row always carries every query term in its title or teaser, so a
 hit there names its company.
 
-`stooq` is **not** in `news`; it is in `finance` only, because its site disallows crawling.
-`sxq kghm -c 'finance poland'` includes it, and so does the portfolio's daily finance request; a manual
-call is explicit, so keep those sparse.
+`stooq` is **not** in `news` either; it is in `finance` only, and its content is PAP news.
+`sxq kghm -c 'finance poland'` includes it.
 
 **`--time-range` works on a news query now** (as of 2026-10-15; this paragraph used to say the
 opposite). `-c news --time-range week` used to return zero with an empty

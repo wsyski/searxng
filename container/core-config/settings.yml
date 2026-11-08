@@ -105,12 +105,12 @@ engines:
     shortcut: lf
     categories: it
     disabled: false
-  # The six finance engines below are in the `finance`, `finance poland` and
+  # The ten finance engines below are in the `finance`, `finance poland` and
   # `finance sweden` tabs (see categories_as_tabs above). They do not run in
   # default general/news searches; request the category explicitly
   # (`-c 'finance poland'`, `-c 'finance sweden'`, `!finance_poland`, or the
   # portfolio jobs' categories='finance poland' / categories='finance sweden'
-  # calls). The first four are Polish, the last two Swedish; `finance` is the
+  # calls). The first eight are Polish, the last two Swedish; `finance` is the
   # union and is what a question with no market in it should ask for. The
   # per-market split is what keeps each portfolio book stable: a new Swedish
   # engine joins `finance` and `finance sweden` and the Polish book does not
@@ -173,22 +173,62 @@ engines:
     disabled: false
   # Stooq (stooq.com) - a Polish market portal whose /search/ is a PAP *news*
   # index, not an instrument search (ticker lookup is /q/s/, exact-symbol only).
-  # ENABLED, but in the finance and finance poland categories only (the tabs above):
-  #   - robots.txt is `User-agent: * / Disallow: /`; only Bingbot and Googlebot
-  #     are allowed. This is the one engine here that ignores that directive.
-  #   - the page sits behind a SHA-256 proof-of-work gate and a Google consent
-  #     wall. The engine solves the PoW and sets privacy=1, which is a consent
-  #     cookie set without consent. Both were the operator's explicit decision.
-  # Finance-only keeps it out of default news/general searches, including
-  # Firecrawl's (SEARXNG_NEWS_CATEGORIES=news). The portfolio requests
-  # categories='finance poland' once a day, which is its scheduled cap; manual
-  # calls:
+  # robots.txt disallows `User-agent: *` (only Bingbot and Googlebot are
+  # allowed) and the page sits behind a SHA-256 proof-of-work gate plus a
+  # Google consent wall; the engine solves the PoW, sets privacy=1 and
+  # requests the site anyway - an operator decision. Manual calls:
   #   !stq <terms>                              (UI / HTML search)
   #   categories='finance poland'&format=json     (API)
-  # Measured 2026-10-24; see searx/engines/stooq.py for the full measurement.
+  # Measured 2026-10-24 and 2026-11-08; see searx/engines/stooq.py for the
+  # full measurement.
   - name: stooq
     engine: stooq
     shortcut: stq
+    categories: [finance, finance poland]
+    disabled: false
+  # Biznesradar (biznesradar.pl) - GPW quote portal; /wiadomosci/<SLUG or
+  # TICKER> is one company's aggregated news page, server-rendered. Tickers
+  # 301 to the canonical slug (PKN -> ORLEN); unknown symbols are 404 = zero
+  # results; the slug is case-sensitive and `?page=` is ignored (pages are
+  # `<SLUG>,<n>`). robots.txt allows User-agent: *. No gate. Verified
+  # 2026-11-08.
+  - name: biznesradar
+    engine: biznesradar
+    shortcut: brz
+    categories: [finance, finance poland]
+    disabled: false
+  # Bankier (bankier.pl) - full-text news search /wyszukiwarka?qt=<terms>.
+  # The parameter is `qt`: ?q=/ ?kw= answer 200 with one identical
+  # no-results page for every term (the sii trap). robots.txt allows
+  # User-agent: * on this path; GPTBot-style AI agents are blocked by name.
+  # Verified 2026-11-08.
+  - name: bankier
+    engine: bankier
+    shortcut: bnk
+    categories: [finance, finance poland]
+    disabled: false
+  # Parkiet (parkiet.com) - Bloomberg Polska daily. The search shell at
+  # /szukaj/<terms> ships an EMPTY container; the rows come from the same
+  # URL with ?ajax=1&page=<n>, which answers JSON {html, isLoadMore}.
+  # Plain /szukaj?q=... 301s to /. robots.txt disallows /szukaj - the second
+  # operator robots exception in this instance, after stooq. Verified
+  # 2026-11-08.
+  - name: parkiet
+    engine: parkiet
+    shortcut: prt
+    categories: [finance, finance poland]
+    disabled: false
+  # --- State registries -------------------------------------------------------
+  # Not company-news sources: document registries, same categories by
+  # operator choice (the portfolio asks for its own market subset).
+  # RDF Przegladarka (rdf-przegladarka.ms.gov.pl) - Ministry of Justice
+  # financial-documents registry for KRS entities; Angular SPA, results via
+  # POST services/rdf/.../dokumenty/wyszukiwanie with an AES-encrypted nrKRS.
+  # Incapsula answers non-JS clients with an interstitial, so the engine can
+  # report a captcha state; a browser passes the gate for free.
+  - name: rdf
+    engine: rdf
+    shortcut: rdf
     categories: [finance, finance poland]
     disabled: false
   # --- Swedish subset (`finance` + `finance sweden`) ---------------------------

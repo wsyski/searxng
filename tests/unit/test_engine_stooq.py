@@ -7,8 +7,8 @@ The source is a news index, not an instrument search, and three behaviours cost
 real time to establish — each is pinned here so a future edit fails loudly:
 
 - the search page is behind a SHA-256 proof-of-work gate and a Google consent
-  wall. ``robots.txt`` disallows the engine, which is why it is disabled by
-  default; the gate is solved, deliberately, only for opt-in calls.
+  wall; the gate is solved deliberately, and ``robots.txt`` disallows the
+  engine — requesting the site anyway is an operator decision.
 - a UA of any kind gets the same 795-byte challenge, so the engine sets none.
   ``request`` must not grow a pretend-browser header to "fix" this.
 - a query with no matches is HTTP 200 plus an explicit Polish empty state, while

@@ -108,11 +108,16 @@ changing anything:
 | `ksiazak` (`!ksz`) | konradksiazak.pl WordPress REST | `search` matches body text, so a hit does **not** mean the company is in the title. |
 | `aktienyheterna` (`!akn`) | aktienyheterna.se WordPress REST | `search` matches a **substring** of the body: `?search=granges` returns two Spendrups posts naming **Grängesberg**, a town, and nothing about Gränges. The engine keeps a row only when every term is a whole word in title, excerpt or body — so its correct answer for Gränges is zero. |
 | `placera` (`!pla`) | placera.se `/search?q=` | The path is `/search`, not `/sok` (404), and `/api/search` answers 200 with an empty object for every parameter name tried. The site ranks near-misses in — `granges` brings back press releases about *grants* — so the engine filters on whole words in the title and slug. No paging: `page`/`p`/`offset` all return the same 100-row page. |
+| `biznesradar` (`!brz`) | biznesradar.pl `/wiadomosci/<SLUG>,<n>` | Tickers 301 to the canonical slug (`PKN` → `ORLEN`) and the slug is **case-sensitive** (`orlen` 404s, `ORLEN` serves 20 rows). `?page=` is silently ignored: page 2 exists only as `<SLUG>,2`, the href of the site's own "następna" link. Unknown symbols answer **404** = zero results. |
+| `bankier` (`!bnk`) | bankier.pl `/wyszukiwarka?qt=` | The parameter is `qt`, **not `q`** — `?q=`/`?kw=` answer 200 with one identical no-results page for every term. `qt` is full text (19,098 hits for `KGHM`), not ticker-only. |
+| `parkiet` (`!prt`) | parkiet.com `/szukaj/<terms>?ajax=1&page=<n>` | The visible page ships an **empty** result container — the rows come from the same URL with `?ajax=1`, which answers JSON `{html, isLoadMore}`. The term must live in the path: plain `/szukaj?q=...` 301s to `/`. robots.txt disallows `/szukaj`; requesting it anyway is the operator decision. |
 
-These five, and stooq below, are in **both `finance` and a per-market subset** —
+These eight, and `stooq` and `rdf` below, are in **both `finance` and a
+per-market subset** —
 not `general` or `news`. `finance` is the international/general finance category
 and the **union** of the subsets; `finance poland` holds `sii`, `dna rynkow`,
-`ksiazak` and `stooq`, and `finance sweden` holds `aktienyheterna` and
+`ksiazak`, `stooq`, `biznesradar`, `bankier`, `parkiet` and `rdf`, and
+`finance sweden` holds `aktienyheterna` and
 `placera`. A default search no longer runs them; request a category explicitly
 (`-c finance` / `-c 'finance poland'` / `-c 'finance sweden'` or the tabs). The
 portfolio's DeGiro news pass asks for `finance poland` once per day for the
@@ -123,15 +128,17 @@ Both Swedish engines publish `dropped_rows`/`site_rows` through `engine_data`,
 as `sii` does: an empty answer with `site_rows` set means "nobody wrote about
 this name", and a missing `engine_data.<name>` key means the engine never ran.
 
-One fork-local finance engine is not a company source. `stooq` (`!stq`) wraps
-stooq.com's `/search/`, which is a Polish **news** index of PAP items, not a
-ticker lookup (`/q/s/` matches symbols only). It is **enabled in
-`finance`/`finance poland` only**, so it never joins ordinary news/general searches —
-including Firecrawl's — and runs when that category is requested. The portfolio
-requests it once per day; a manual `-c finance` is an explicit request. That is
-deliberate: the site's `robots.txt` allows only Bingbot and Googlebot, and the
-page sits behind a SHA-256 proof-of-work gate plus a Google consent wall, both of
-which the engine clears. `searx/engines/stooq.py` records the measurement.
+Two fork-local finance engines are not per-company sources. `stooq` (`!stq`)
+wraps stooq.com's `/search/`, which is a Polish **news** index of PAP items,
+not a ticker lookup (`/q/s/` matches symbols only); the page sits behind a
+SHA-256 proof-of-work gate plus a Google consent wall, both of which the
+engine clears, and its `robots.txt` disallows `User-agent: *` — requesting it
+anyway is the operator decision. `searx/engines/stooq.py` records the
+measurement. `rdf` (`!rdf`) is the Ministry of Justice financial-documents
+registry (KRS): a query is a KRS number and the rows are that entity's filed
+reports, not articles; a non-JS client can be answered an Incapsula
+interstitial, which the engine reports as a captcha state rather than as
+zero results.
 
 Sixth mount is not fork-local: `github.py` is an **upstream** engine patched
 here to read the GitHub token from the environment. Without that mount the

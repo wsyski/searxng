@@ -20,7 +20,7 @@ separate source.
 
 .. attention::
 
-   **``robots.txt`` forbids this engine.** ``stooq.com`` and ``stooq.pl`` both
+   **``robots.txt`` disallows this engine.** ``stooq.com`` and ``stooq.pl`` both
    serve::
 
        User-agent: Bingbot
@@ -30,13 +30,10 @@ separate source.
        User-agent: *
        Disallow: /
 
-   This engine is **enabled, but in ``finance`` and ``finance poland`` only**.
-   Its content is news; the categories keep it out of default ``general`` and
-   ``news`` queries. ``finance`` is the international/general category and
-   ``finance poland`` its Polish subset. The portfolio requests
-   ``finance poland`` once per day, and the finance record is the job's
-   once-a-day cap; a manual category query is an explicit request and is not
-   capped by the job. Do not add it to ``news``.
+   The engine requests the site anyway — an operator decision, like
+   ``parkiet`` requesting the ``/szukaj`` path that site disallows. It runs in
+   ``finance`` and ``finance poland`` like the other Polish sources; the
+   content is news, which is what keeps it out of ``general``.
 
 .. attention::
 
@@ -49,17 +46,20 @@ separate source.
 
    Measured 2026-10-24: no UA, ``curl/8.5.0``, Chrome 140 and Firefox 158 all
    receive the identical 795-byte challenge, so a browser UA buys nothing and
-   this engine does not pretend to be one. What gets through is executing the
-   PoW and replaying the issued ``auth`` cookie. Solving is cheap: difficulty 4
-   averages 65,536 SHA-256 evaluations (~0.1 s), and the result is cached.
+   this engine does not pretend to be one. A script UA buys no pass either:
+   ``python-requests/2.32.3`` is answered **404** by the front end, not with
+   the page or the challenge (re-measured 2026-11-08). What gets through is
+   executing the PoW and replaying the issued ``auth`` cookie. Solving is
+   cheap: difficulty 4 averages 65,536 SHA-256 evaluations (~0.1 s), and the
+   result is cached.
 
    After ``auth`` is accepted the response is still **not** the site: it is a
    ~234 kB Google Funding Choices consent script with no visible text and no
    ``<title>``. The real page is served only when a ``privacy`` cookie is
    present. This engine sets ``privacy=1``, which is a consent cookie set
-   **without consent** — the second reason this engine is opt-in and disabled
-   by default. Both cookies are set explicitly on every search; the PoW is
-   retried once in :py:func:`response` when a cached ``auth`` has expired.
+   **without consent** — the second half of the operator decision above. Both
+   cookies are set explicitly on every search; the PoW is retried once in
+   :py:func:`response` when a cached ``auth`` has expired.
 
 .. attention::
 

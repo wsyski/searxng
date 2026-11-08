@@ -1,0 +1,20 @@
+# This SearXNG setup is used in unit tests
+
+use_default_settings:
+
+  engines:
+    # remove all engines
+    keep_only: []
+
+categories_as_tabs:
+  finance:
+  finance poland:
+
+engines:
+
+  - name: bankier
+    engine: bankier
+    categories: ["finance", "finance poland"]
+    shortcut: "bnk"
+    timeout: 9.0
+    disabled: false
