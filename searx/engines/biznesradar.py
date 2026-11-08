@@ -22,9 +22,8 @@ through the redirect the network layer follows. An unknown symbol answers
    ``?page=2`` return identical ``msg-`` ids — while the real page 2 is
    ``/wiadomosci/ORLEN,2``, the href of the site's own "następna" link.
 
-robots.txt (checked 2026-11-08) allows ``User-agent: *`` and disallows only
-``/profile-*``-style paths this engine never touches. No gate, no cookies:
-``SearXNG/2026.01`` is served the full page, so the engine sets no UA.
+No gate, no cookies: ``SearXNG/2026.01`` is served the full page, so the
+engine sets no UA.
 """
 
 import re

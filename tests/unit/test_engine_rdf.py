@@ -43,8 +43,7 @@ def _resp(payload, status_code=200):
 
 
 def _body(params: OnlineParamTypes) -> dict[str, t.Any]:
-    data = t.cast(object, params["data"])
-    return json.loads(t.cast(str, data))
+    return t.cast("dict[str, t.Any]", t.cast(object, params["json"]))
 
 
 def _api_url(params: OnlineParamTypes) -> str:
@@ -114,6 +113,7 @@ class RdfEngineTests(SearxTestCase):
         params = _params()
         self.engine.request("5828", params)
         self.assertEqual(_api_url(params), f"{rdf_mod.base_url}/dokumenty/wyszukiwanie")
+        self.assertEqual(params["method"], "POST")
         body = _body(params)
         self.assertNotIn("5828", body["nrKRS"])  # encrypted, never plain digits
         self.assertEqual(

@@ -187,7 +187,8 @@ def request(query, params):
         },
     }
     params["url"] = f"{base_url}/dokumenty/wyszukiwanie"
-    params["data"] = json.dumps(body)
+    params["method"] = "POST"
+    params["json"] = body
     params["headers"] = {**params.get("headers", {}), "Content-Type": "application/json"}
     params["raise_for_httperror"] = False
     return params

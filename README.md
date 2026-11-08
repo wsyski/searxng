@@ -85,8 +85,7 @@ true` appends names it does not already know.
 
 `liferay forum` (module `searx/engines/liferay_forum.py`, shortcut `!lf`)
 queries the Discourse instance at `discuss.lifecycle.com`, whose
-`search.json` returns JSON over plain HTTP and whose robots.txt allows
-`User-agent: *`. Three behaviours to know before writing the next one:
+`search.json` returns JSON over plain HTTP. Three behaviours to know before writing the next one:
 
 - **Discourse rate-limits anonymous clients hard.** A burst earns a 180 s
   suspension, surfaced by SearXNG as `Suspended: too many requests` in
@@ -110,13 +109,14 @@ changing anything:
 | `placera` (`!pla`) | placera.se `/search?q=` | The path is `/search`, not `/sok` (404), and `/api/search` answers 200 with an empty object for every parameter name tried. The site ranks near-misses in — `granges` brings back press releases about *grants* — so the engine filters on whole words in the title and slug. No paging: `page`/`p`/`offset` all return the same 100-row page. |
 | `biznesradar` (`!brz`) | biznesradar.pl `/wiadomosci/<SLUG>,<n>` | Tickers 301 to the canonical slug (`PKN` → `ORLEN`) and the slug is **case-sensitive** (`orlen` 404s, `ORLEN` serves 20 rows). `?page=` is silently ignored: page 2 exists only as `<SLUG>,2`, the href of the site's own "następna" link. Unknown symbols answer **404** = zero results. |
 | `bankier` (`!bnk`) | bankier.pl `/wyszukiwarka?qt=` | The parameter is `qt`, **not `q`** — `?q=`/`?kw=` answer 200 with one identical no-results page for every term. `qt` is full text (19,098 hits for `KGHM`), not ticker-only. |
-| `parkiet` (`!prt`) | parkiet.com `/szukaj/<terms>?ajax=1&page=<n>` | The visible page ships an **empty** result container — the rows come from the same URL with `?ajax=1`, which answers JSON `{html, isLoadMore}`. The term must live in the path: plain `/szukaj?q=...` 301s to `/`. robots.txt disallows `/szukaj`; requesting it anyway is the operator decision. |
+| `parkiet` (`!prt`) | parkiet.com `/szukaj/<terms>?ajax=1&page=<n>` | The visible page ships an **empty** result container — the rows come from the same URL with `?ajax=1`, which answers JSON `{html, isLoadMore}`. The term must live in the path: plain `/szukaj?q=...` 301s to `/`. |
+| `gpw` (`!gpw`) | gpw.pl `POST /ajaxindex.php` (the `/komunikaty` ESPI/EBI filter form) | The WAF **resets the connection for any UA containing "Mozilla"** and serves script UAs — the opposite of most sites. The body must be the raw repeated-keys form encoding: curl_cffi's own array encoding of the checkbox fields is answered 200 + a "Request Rejected" page. No match is a whitespace-only fragment; paging is `offset += 15`. |
 
-These eight, and `stooq` and `rdf` below, are in **both `finance` and a
+These nine, and `stooq` and `rdf` below, are in **both `finance` and a
 per-market subset** —
 not `general` or `news`. `finance` is the international/general finance category
 and the **union** of the subsets; `finance poland` holds `sii`, `dna rynkow`,
-`ksiazak`, `stooq`, `biznesradar`, `bankier`, `parkiet` and `rdf`, and
+`ksiazak`, `stooq`, `biznesradar`, `bankier`, `parkiet`, `gpw` and `rdf`, and
 `finance sweden` holds `aktienyheterna` and
 `placera`. A default search no longer runs them; request a category explicitly
 (`-c finance` / `-c 'finance poland'` / `-c 'finance sweden'` or the tabs). The
@@ -132,8 +132,7 @@ Two fork-local finance engines are not per-company sources. `stooq` (`!stq`)
 wraps stooq.com's `/search/`, which is a Polish **news** index of PAP items,
 not a ticker lookup (`/q/s/` matches symbols only); the page sits behind a
 SHA-256 proof-of-work gate plus a Google consent wall, both of which the
-engine clears, and its `robots.txt` disallows `User-agent: *` — requesting it
-anyway is the operator decision. `searx/engines/stooq.py` records the
+engine clears. `searx/engines/stooq.py` records the
 measurement. `rdf` (`!rdf`) is the Ministry of Justice financial-documents
 registry (KRS): a query is a KRS number and the rows are that entity's filed
 reports, not articles; a non-JS client can be answered an Incapsula

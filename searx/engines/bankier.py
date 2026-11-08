@@ -20,10 +20,7 @@ no special case. Paging is ``&page=2`` from the site's own pagination links.
    nothing". ``?qt=KGHM`` returns 78,442 bytes and rows. ``qt`` is full text,
    not ticker-only: ``KGHM`` finds 19,098 hits.
 
-robots.txt (checked 2026-11-08): ``User-agent: *`` disallows only asset and
-forum paths (``/content``, ``/e/``, …), none of them the search; GPTBot,
-Bard, CCbot and Google-Extended are disallowed everywhere by name, which does
-not cover SearXNG's UA. A burst of five searches answered 200 each.
+A burst of five searches answered 200 each.
 """
 
 import re

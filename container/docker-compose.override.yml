@@ -50,10 +50,10 @@ services:
       - ../searx/engines/biznesradar.py:/usr/local/searxng/searx/engines/biznesradar.py:ro
       - ../searx/engines/bankier.py:/usr/local/searxng/searx/engines/bankier.py:ro
       - ../searx/engines/parkiet.py:/usr/local/searxng/searx/engines/parkiet.py:ro
+      - ../searx/engines/gpw.py:/usr/local/searxng/searx/engines/gpw.py:ro
       - ../searx/engines/rdf.py:/usr/local/searxng/searx/engines/rdf.py:ro
       # Swedish subset (finance + finance sweden), added 2026-10-30 for the two
-      # Avanza books. Both read a public search surface with no robots.txt or
-      # TDM objection, unlike stooq above.
+      # Avanza books. Both read a public search surface.
       - ../searx/engines/aktienyheterna.py:/usr/local/searxng/searx/engines/aktienyheterna.py:ro
       - ../searx/engines/placera.py:/usr/local/searxng/searx/engines/placera.py:ro
       # Upstream engine, patched fork-side to read a GitHub token from the

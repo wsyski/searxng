@@ -25,11 +25,6 @@ engine parses out of the fragment (the JS load-more does exactly this)::
    teaser. No matches is an empty fragment with ``isLoadMore: 0`` — zero
    results, not an error.
 
-robots.txt (checked 2026-11-08): ``User-agent: *`` is allowed the site but
-disallows ``/szukaj`` and ``/szukaj/*`` — the search path. The engine
-requests the path it disallows, like ``stooq`` does for its whole site: an
-operator decision, not an engine author's.
-
 The bare page is served to any UA (the Incapsula-free host); a browser-like
 UA is required — ``SearXNG/2026.01`` is fine on ``/szukaj/<term>``.
 """

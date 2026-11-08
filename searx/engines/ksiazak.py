@@ -26,8 +26,7 @@ is in the *title* — "orlen" returns the Atrem note because ORLEN is discussed
 inside it. Both behaviours are asserted in the tests.
 
 No ``User-Agent`` is set: the API answers every client identically, verified
-with none at all. robots.txt carries no AI-agent rule; ``User-agent: *``
-disallows only ``/wp-admin/``.
+with none at all.
 """
 
 import re

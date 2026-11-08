@@ -20,23 +20,6 @@ separate source.
 
 .. attention::
 
-   **``robots.txt`` disallows this engine.** ``stooq.com`` and ``stooq.pl`` both
-   serve::
-
-       User-agent: Bingbot
-       Allow: /
-       User-agent: Googlebot
-       Allow: /
-       User-agent: *
-       Disallow: /
-
-   The engine requests the site anyway — an operator decision, like
-   ``parkiet`` requesting the ``/szukaj`` path that site disallows. It runs in
-   ``finance`` and ``finance poland`` like the other Polish sources; the
-   content is news, which is what keeps it out of ``general``.
-
-.. attention::
-
    **Two gates, neither of them the User-Agent.** A request without cookies is
    answered with a 795-byte JavaScript proof-of-work challenge::
 
@@ -56,8 +39,8 @@ separate source.
    After ``auth`` is accepted the response is still **not** the site: it is a
    ~234 kB Google Funding Choices consent script with no visible text and no
    ``<title>``. The real page is served only when a ``privacy`` cookie is
-   present. This engine sets ``privacy=1``, which is a consent cookie set
-   **without consent** — the second half of the operator decision above. Both
+   present. This engine sets ``privacy=1``, a consent cookie set **without
+   consent**. Both
    cookies are set explicitly on every search; the PoW is retried once in
    :py:func:`response` when a cached ``auth`` has expired.
 

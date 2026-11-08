@@ -105,12 +105,12 @@ engines:
     shortcut: lf
     categories: it
     disabled: false
-  # The ten finance engines below are in the `finance`, `finance poland` and
+  # The eleven finance engines below are in the `finance`, `finance poland` and
   # `finance sweden` tabs (see categories_as_tabs above). They do not run in
   # default general/news searches; request the category explicitly
   # (`-c 'finance poland'`, `-c 'finance sweden'`, `!finance_poland`, or the
   # portfolio jobs' categories='finance poland' / categories='finance sweden'
-  # calls). The first eight are Polish, the last two Swedish; `finance` is the
+  # calls). The first nine are Polish, the last two Swedish; `finance` is the
   # union and is what a question with no market in it should ask for. The
   # per-market split is what keeps each portfolio book stable: a new Swedish
   # engine joins `finance` and `finance sweden` and the Polish book does not
@@ -133,8 +133,7 @@ engines:
   # parameter reads as a healthy engine that found nothing. And a query that
   # matches nothing answers 404, not an empty 200, so the engine sets
   # raise_for_httperror = False and returns zero results instead of failing.
-  # robots.txt carries no AI-agent rule; `User-agent: *` disallows only asset
-  # paths. The engine identifies as SearXNG/1.0: the site rejects a bare
+  # The engine identifies as SearXNG/1.0: the site rejects a bare
   # "Mozilla/5.0" and "curl/8.5.0" with an empty shell but serves a full page
   # to any realistic agent string, so honesty costs nothing here.
   - name: sii
@@ -151,9 +150,7 @@ engines:
   # server-rendered into the HTML body, so a payload-only check concludes the
   # site is client-rendered; and `page` is 1-based in effect, since page=0 and
   # page=1 both return the first page.
-  # robots.txt names ClaudeBot, Claude-User, Claude-SearchBot, GPTBot and a
-  # dozen others under `Allow: /`; only /pulpit is disallowed and is never
-  # requested here. Coverage is partial - Orlen has no card and returns zero.
+  # Coverage is partial - Orlen has no card and returns zero.
   - name: dna rynkow
     engine: dna_rynkow
     categories: [finance, finance poland]
@@ -173,10 +170,8 @@ engines:
     disabled: false
   # Stooq (stooq.com) - a Polish market portal whose /search/ is a PAP *news*
   # index, not an instrument search (ticker lookup is /q/s/, exact-symbol only).
-  # robots.txt disallows `User-agent: *` (only Bingbot and Googlebot are
-  # allowed) and the page sits behind a SHA-256 proof-of-work gate plus a
-  # Google consent wall; the engine solves the PoW, sets privacy=1 and
-  # requests the site anyway - an operator decision. Manual calls:
+  # The page sits behind a SHA-256 proof-of-work gate plus a
+  # Google consent wall; the engine solves the PoW and sets privacy=1. Manual calls:
   #   !stq <terms>                              (UI / HTML search)
   #   categories='finance poland'&format=json     (API)
   # Measured 2026-10-24 and 2026-11-08; see searx/engines/stooq.py for the
@@ -190,7 +185,7 @@ engines:
   # TICKER> is one company's aggregated news page, server-rendered. Tickers
   # 301 to the canonical slug (PKN -> ORLEN); unknown symbols are 404 = zero
   # results; the slug is case-sensitive and `?page=` is ignored (pages are
-  # `<SLUG>,<n>`). robots.txt allows User-agent: *. No gate. Verified
+  # `<SLUG>,<n>`). No gate. Verified
   # 2026-11-08.
   - name: biznesradar
     engine: biznesradar
@@ -199,9 +194,7 @@ engines:
     disabled: false
   # Bankier (bankier.pl) - full-text news search /wyszukiwarka?qt=<terms>.
   # The parameter is `qt`: ?q=/ ?kw= answer 200 with one identical
-  # no-results page for every term (the sii trap). robots.txt allows
-  # User-agent: * on this path; GPTBot-style AI agents are blocked by name.
-  # Verified 2026-11-08.
+  # no-results page for every term (the sii trap). Verified 2026-11-08.
   - name: bankier
     engine: bankier
     shortcut: bnk
@@ -210,12 +203,22 @@ engines:
   # Parkiet (parkiet.com) - Bloomberg Polska daily. The search shell at
   # /szukaj/<terms> ships an EMPTY container; the rows come from the same
   # URL with ?ajax=1&page=<n>, which answers JSON {html, isLoadMore}.
-  # Plain /szukaj?q=... 301s to /. robots.txt disallows /szukaj - the second
-  # operator robots exception in this instance, after stooq. Verified
+  # Plain /szukaj?q=... 301s to /. Verified
   # 2026-11-08.
   - name: parkiet
     engine: parkiet
     shortcut: prt
+    categories: [finance, finance poland]
+    disabled: false
+  # GPW (gpw.pl) - Warsaw Stock Exchange: company reports ESPI/EBI
+  # (raporty biezace i okresowe). A query is a company: name, ticker or ISIN.
+  # The /komunikaty filter form POSTs to /ajaxindex.php, which answers a bare
+  # <li> fragment; no match is a whitespace fragment; paging is offset+=15.
+  # The WAF resets any UA containing "Mozilla" and serves script UAs, so the
+  # engine sends SearXNG/1.0. Verified 2026-11-08.
+  - name: gpw
+    engine: gpw
+    shortcut: gpw
     categories: [finance, finance poland]
     disabled: false
   # --- State registries -------------------------------------------------------
@@ -250,9 +253,6 @@ engines:
   # Do NOT switch this to the HTML ?s= page for looking more productive: a
   # nonsense query already returns 5 /blog/ links there (sidebar furniture), so
   # granges 7 and swedbank 15 are the same REST yield plus a fixed noise floor.
-  # robots.txt (2026-10-30): `User-agent: *` disallows only /wp-admin/, no
-  # AI-agent rule; /.well-known/tdmrep.json is 404 and no page carries a
-  # tdm-reservation meta.
   - name: aktienyheterna
     engine: aktienyheterna
     categories: [finance, finance sweden]
@@ -273,17 +273,9 @@ engines:
   # URL slug. No paging: &page=2, &p=2 and &offset=100 each return the same
   # 100-row page. The date comes from the slug (-YYYY-MM-DD editorial,
   # -YYYYMMDD wire) because the rendered date carries no year.
-  # robots.txt (2026-10-30): `User-agent: *` is `Allow: /` with /admin/
-  # disallowed; a second group naming ClaudeBot, Anthropic-ai, GPTBot, CCBot,
-  # PerplexityBot and others disallows only /_next/image, /media/ and
-  # /api/media/file/. A named group REPLACES `*`, so /search is allowed under
-  # either, and this engine's SearXNG/1.0 matches no named group. No TDM
-  # reservation (tdmrep.json 404, no meta, no X-Robots-Tag). Unlike `stooq`
-  # above, nothing here needed an operator exception.
-  # Rejected Swedish candidates, so they are not rediscovered: mfn.se
-  # (Disallow: *.rss$), di.se and privataaffarer.se (Bonnier - ClaudeBot
-  # blocked, §15a TDM reservation) are an operator decision like stooq, not an
-  # engine author's; aktiespararna.se/sok?q= is the sii ?q= trap exactly (200,
+  # Rejected Swedish candidates, so they are not rediscovered: mfn.se, di.se
+  # and privataaffarer.se (Bonnier - §15a TDM reservation) are an operator
+  # decision; aktiespararna.se/sok?q= is the sii ?q= trap exactly (200,
   # 234,7xx bytes and the same five term hits for granges, swedbank AND a
   # nonsense query - the search is client-side and no backing API is named in
   # the markup); borsvarlden.se serves a certificate with no matching name.

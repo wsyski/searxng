@@ -48,30 +48,14 @@ The date is taken from the **slug**, not from the rendered page: the displayed
 date reads "30 september, 10:00" with no year, which for a 2006 archive is
 useless. Editorial slugs end ``-YYYY-MM-DD`` and wire slugs ``-YYYYMMDD``.
 
-robots.txt, checked 2026-10-30, and the verdict it supports:
-
-- the ``User-agent: *`` group is ``Allow: /`` with ``Disallow: /admin/``.
-- a second group names ``ClaudeBot``, ``Anthropic-ai``, ``GPTBot``,
-  ``CCBot``, ``PerplexityBot``, ``Google-Extended``, ``Bytespider`` and others,
-  and disallows only ``/_next/image``, ``/media/`` and ``/api/media/file/``.
-  A named group *replaces* ``*`` rather than adding to it, so even under the
-  AI-bot group ``/search`` is allowed; this engine touches none of the three
-  disallowed prefixes under either group.
-- the engine identifies as ``SearXNG/1.0``, which matches no named group and
-  so falls under ``Allow: /``.
-- no TDM reservation: ``/.well-known/tdmrep.json`` is 404, no
-  ``tdm-reservation`` meta and no ``X-Robots-Tag`` on the search response.
-
-This is deliberately *unlike* :py:mod:`searx.engines.stooq`, whose robots.txt
-is ``Disallow: /`` for everyone and whose inclusion was the operator's explicit
-decision. Nothing here needed one.
+The engine identifies as ``SearXNG/1.0``, honestly and explicitly, like
+:py:mod:`searx.engines.sii` does.
 
 Two Swedish sources were considered and rejected, recorded so they are not
 rediscovered as candidates:
 
-- ``mfn.se`` (``Disallow: *.rss$``), ``di.se`` and ``privataaffarer.se``
-  (Bonnier: ClaudeBot blocked, §15a TDM reservation) — a decision for the
-  operator, like stooq, not for an engine author.
+- ``mfn.se``, ``di.se`` and ``privataaffarer.se`` (Bonnier: §15a TDM
+  reservation) — a decision for the operator, not for an engine author.
 - ``aktiespararna.se/sok?q=`` — the sii ``?q=`` trap exactly: 200 for every
   query, 234,7xx bytes and the same five term occurrences for ``granges``,
   ``swedbank`` and a nonsense query, because the search is client-side and the

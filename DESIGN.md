@@ -432,7 +432,7 @@ changes to the base file do not conflict.
   `searx/engines/`: `liferay_forum.py`, `sii.py`, `dna_rynkow.py`, `ksiazak.py`,
   `aktienyheterna.py`, `placera.py` (fork-local; the last two in
   `finance`/`finance sweden`), `stooq.py`, `biznesradar.py`, `bankier.py`,
-  `parkiet.py` and `rdf.py` (fork-local, enabled in
+  `parkiet.py`, `gpw.py` and `rdf.py` (fork-local, enabled in
   `finance`/`finance poland`; see `README.md`) and `github.py` (an upstream engine patched fork-side to read
   the GitHub token from the environment); plus three core files for the JSON
   response fields — `searx/webadapter.py`, `searx/webutils.py` and

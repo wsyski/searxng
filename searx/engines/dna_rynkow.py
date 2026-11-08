@@ -35,12 +35,6 @@ The page needs no ``User-Agent``: a request with none, a bare ``Mozilla/5.0``
 and ``curl/8.5.0`` all return the same result set, so this engine sets no
 headers and relies on the default transport.
 
-``robots.txt`` (checked 2026-10-11) is explicit rather than silent — it names
-GPTBot, OAI-SearchBot, ChatGPT-User, **ClaudeBot, Claude-User,
-Claude-SearchBot**, PerplexityBot, Google-Extended, Applebot-Extended,
-Amazonbot, CCBot and meta-externalagent under ``Allow: /``. The only path
-disallowed is ``/pulpit``, which this engine never requests.
-
 Paging: 24 results per page. The ``page`` parameter is 1-based in effect —
 ``page=1`` and ``page=0`` both return the first page, ``page=2`` the second.
 Checked with ``?search=a``, which reports 56 matches and returns 24 + 24 + 8.

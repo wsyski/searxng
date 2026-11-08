@@ -124,9 +124,8 @@ class PlaceraRequestTests(_PlaceraTestCase):
         self.assertIn("q=AT%26T+C%23", _url(params))
 
     def test_request_identifies_itself(self):
-        """SearXNG/1.0 matches no named robots.txt group, so it falls under
-        `User-agent: * / Allow: /` - which is the robots verdict this engine
-        rests on."""
+        """The engine identifies honestly; the UA must not regress to a
+        browser string it is not."""
         params = _params()
         self.engine.request("granges", params)
         self.assertEqual(params["headers"]["User-Agent"], "SearXNG/1.0")

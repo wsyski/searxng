@@ -50,11 +50,6 @@ The site has a plain server-rendered search page::
    integration collection encodes that as an accepted second outcome rather than
    hiding it.
 
-   robots.txt (checked 2026-10-11) carries no AI-agent rule of any kind; the
-   ``User-agent: *`` group disallows only ``/cgi-bin/``, ``/min/``, ``/pimg/``,
-   ``/weryfikacja/``, ``/images/`` and ``/scripts/``, none of which this
-   engine touches.
-
 .. attention::
 
    **The site ORs the terms and matches fragments, so `response()` filters.**

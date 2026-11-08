@@ -53,10 +53,7 @@ headers but not needed — WordPress answers **400** past the last page, which
 
 No ``User-Agent`` is set for authentication reasons — the API answers every
 client identically — but one is sent anyway, honestly, for the same reason
-:py:mod:`searx.engines.sii` does. robots.txt (checked 2026-10-30) carries no
-AI-agent rule and no TDM reservation; ``/.well-known/tdmrep.json`` is 404 and
-the pages carry no ``tdm-reservation`` meta. ``User-agent: *`` disallows only
-``/wp-admin/``.
+:py:mod:`searx.engines.sii` does.
 """
 
 import re
