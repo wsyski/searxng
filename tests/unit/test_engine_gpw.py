@@ -76,7 +76,10 @@ ROWS = """\
 </li>
 """
 
-REJECTED = '<html><head><title>Request Rejected</title></head><body>The requested URL was rejected on this web site.</body></html>'
+REJECTED = (
+    '<html><head><title>Request Rejected</title></head>'
+    '<body>The requested URL was rejected on this web site.</body></html>'
+)
 
 
 class GpwEngineTests(SearxTestCase):
@@ -135,7 +138,8 @@ class GpwEngineTests(SearxTestCase):
         )
         self.assertEqual(
             first["title"],
-            "KGHM POLSKA MIEDŹ SPÓŁKA AKCYJNA (PLKGHM000017) — Wykaz akcjonariuszy posiadających co najmniej 5% liczby głosów na Nadzwyczajnym Walnym Zgromadzeniu",
+            "KGHM POLSKA MIEDŹ SPÓŁKA AKCYJNA (PLKGHM000017) — Wykaz akcjonariuszy "
+            "posiadających co najmniej 5% liczby głosów na Nadzwyczajnym Walnym Zgromadzeniu",
         )
         self.assertEqual(first["publishedDate"], datetime(2026, 11, 3, 13, 23, 45))
         self.assertEqual(first["content"], "Bieżący | ESPI | 40/2026")

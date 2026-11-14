@@ -65,8 +65,8 @@ _DATE_FMT = "%H:%M - %d.%m.%Y"
 def request(query, params):
     # The term is a path segment (spaces percent-encode); page 1 is the same
     # URL with page=1, which the site's load-more uses.
-    params["url"] = (
-        f"{base_url}/szukaj/{quote(query.strip())}?" + urlencode({"ajax": "1", "page": params.get("pageno", 1)})
+    params["url"] = f"{base_url}/szukaj/{quote(query.strip())}?" + urlencode(
+        {"ajax": "1", "page": params.get("pageno", 1)}
     )
     params["raise_for_httperror"] = False
     return params

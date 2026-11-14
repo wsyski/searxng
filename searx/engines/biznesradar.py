@@ -30,7 +30,6 @@ import re
 from datetime import datetime
 
 from searx.exceptions import SearxEngineResponseException
-from searx.network import get
 from searx.result_types import EngineResults
 from searx.utils import html_to_text
 

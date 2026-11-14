@@ -58,9 +58,7 @@ _TEASER_RE = re.compile(r"<p>(.*?)</p>", re.S)
 
 
 def request(query, params):
-    params["url"] = f"{base_url}/wyszukiwarka?" + urlencode(
-        {"qt": query, "page": params.get("pageno", 1)}
-    )
+    params["url"] = f"{base_url}/wyszukiwarka?" + urlencode({"qt": query, "page": params.get("pageno", 1)})
     params["raise_for_httperror"] = False
     return params
 

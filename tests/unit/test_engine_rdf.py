@@ -82,9 +82,7 @@ INTERSTITIAL = """<html><head><noscript><title>Pardon Our Interruption</title>
 class RdfCryptoTests(SearxTestCase):
 
     def test_aes_matches_the_fips197_vector(self):
-        ct = rdf_mod._aes_cbc_encrypt(
-            bytes(range(16)), bytes.fromhex("00112233445566778899aabbccddeeff")
-        )
+        ct = rdf_mod._aes_cbc_encrypt(bytes(range(16)), bytes.fromhex("00112233445566778899aabbccddeeff"))
         self.assertEqual(ct[:16].hex(), "69c4e0d86a7b0430d8cdb78070b4c55a")
 
     def test_nrkrs_roundtrip(self):

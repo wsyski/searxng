@@ -86,10 +86,10 @@ test.pyright_modified() {
     # renamed away - and basedpyright exited 4 with "does not exist". The first
     # .py rename in this fork (dnarynkow.py -> dna_rynkow.py) is what found it.
     readarray -t pyrigth_files < <(
-        git status --porcelain \
-            | sed -e 's/^...//' -e 's/^.* -> //' \
-            | grep -E '\.pyi?$' \
-            | while IFS= read -r f; do [ -f "$f" ] && printf '%s\n' "$f"; done
+        git status --porcelain |
+            sed -e 's/^...//' -e 's/^.* -> //' |
+            grep -E '\.pyi?$' |
+            while IFS= read -r f; do [ -f "$f" ] && printf '%s\n' "$f"; done
     )
     if [ ${#pyrigth_files[@]} -eq 0 ]; then
         echo "there are no locally modified python files that could be checked"
