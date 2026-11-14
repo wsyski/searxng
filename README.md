@@ -96,9 +96,9 @@ queries the Discourse instance at `discuss.lifecycle.com`, whose
 - **`paging` is off**: `/search.json` accepts `page` but returns the same set for
   page 0 and page 1.
 
-The other three fork-local engines are finance sources, and the trap each one
-documents in its own module docstring is a *measurement*, so read that before
-changing anything:
+The other eleven fork-local engines are finance sources. Nine are per-company
+sources, and the trap each one documents in its own module docstring is a
+*measurement*, so read that before changing anything:
 
 | Engine | Source | What bit us |
 |---|---|---|
@@ -139,10 +139,10 @@ reports, not articles; a non-JS client can be answered an Incapsula
 interstitial, which the engine reports as a captcha state rather than as
 zero results.
 
-Sixth mount is not fork-local: `github.py` is an **upstream** engine patched
-here to read the GitHub token from the environment. Without that mount the
-container keeps the image's copy and the patch is a silent no-op — the repo
-looks patched while nothing changed.
+One engine mount is not fork-local: `github.py` is an **upstream** engine
+patched here to read the GitHub token from the environment. Without that mount
+the container keeps the image's copy and the patch is a silent no-op — the
+repo looks patched while nothing changed.
 
 `sii` and `dna rynkow` are rate-limit-prone (`sii` answers 429 after two or
 three searches in a burst and is then suspended for an hour). Keep Postman runs
@@ -158,6 +158,13 @@ and an **empty** `unresponsive_engines`, so there is no error to notice.
 The engine list is published by `/config`. Read that rather than
 `searx/settings.yml` in this repo: the running instance merges the defaults
 bundled in its pinned image, not this working tree.
+
+## Unit tests
+
+`bin/unit-tests.sh` runs the complete SearXNG unit suite through the managed
+toolchain (`./manage test.unit`, which invokes nose2 over `tests/unit`). It can
+be called from any directory. It does not run Kanban tests, a local model, or
+the slower Robot browser suite.
 
 ## Skills
 
