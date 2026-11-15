@@ -883,7 +883,7 @@
                   "  pm.expect(rs, 'empty result with no unresponsive_engines').to.have.length.above(0);",
                   "});",
                   "pm.test('Every result is a dnarynkow.pl /spolki/ card', () => {",
-                  "  const bad = rs.filter(r => !r || !/^https:\\/\\/dna_rynkow\\.pl\\/spolki\\/[a-z0-9-]+\\/$/.test(r.url || '')).map(r => (r||{}).url);",
+                  "  const bad = rs.filter(r => !r || !/^https:\\/\\/dnarynkow\\.pl\\/spolki\\/[a-z0-9-]+\\/$/.test(r.url || '')).map(r => (r||{}).url);",
                   "  pm.expect(bad, 'not a stock card URL: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
                   "});",
                   "pm.test('Every title carries a ticker in parentheses', () => {",
@@ -942,7 +942,7 @@
                   "  pm.expect(rs, 'empty result with no unresponsive_engines').to.have.length.above(0);",
                   "});",
                   "pm.test('Every result is a dnarynkow.pl /spolki/ card', () => {",
-                  "  const bad = rs.filter(r => !r || !/^https:\\/\\/dna_rynkow\\.pl\\/spolki\\/[a-z0-9-]+\\/$/.test(r.url || '')).map(r => (r||{}).url);",
+                  "  const bad = rs.filter(r => !r || !/^https:\\/\\/dnarynkow\\.pl\\/spolki\\/[a-z0-9-]+\\/$/.test(r.url || '')).map(r => (r||{}).url);",
                   "  pm.expect(bad, 'not a stock card URL: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
                   "});",
                   "pm.test('Every title carries a ticker in parentheses', () => {",
@@ -1001,7 +1001,7 @@
                   "  pm.expect(rs, 'empty result with no unresponsive_engines').to.have.length.above(0);",
                   "});",
                   "pm.test('Every result is a dnarynkow.pl /spolki/ card', () => {",
-                  "  const bad = rs.filter(r => !r || !/^https:\\/\\/dna_rynkow\\.pl\\/spolki\\/[a-z0-9-]+\\/$/.test(r.url || '')).map(r => (r||{}).url);",
+                  "  const bad = rs.filter(r => !r || !/^https:\\/\\/dnarynkow\\.pl\\/spolki\\/[a-z0-9-]+\\/$/.test(r.url || '')).map(r => (r||{}).url);",
                   "  pm.expect(bad, 'not a stock card URL: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
                   "});",
                   "pm.test('Every title carries a ticker in parentheses', () => {",
@@ -1060,7 +1060,7 @@
                   "  pm.expect(rs, 'empty result with no unresponsive_engines').to.have.length.above(0);",
                   "});",
                   "pm.test('Every result is a dnarynkow.pl /spolki/ card', () => {",
-                  "  const bad = rs.filter(r => !r || !/^https:\\/\\/dna_rynkow\\.pl\\/spolki\\/[a-z0-9-]+\\/$/.test(r.url || '')).map(r => (r||{}).url);",
+                  "  const bad = rs.filter(r => !r || !/^https:\\/\\/dnarynkow\\.pl\\/spolki\\/[a-z0-9-]+\\/$/.test(r.url || '')).map(r => (r||{}).url);",
                   "  pm.expect(bad, 'not a stock card URL: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
                   "});",
                   "pm.test('Every title carries a ticker in parentheses', () => {",
@@ -1341,6 +1341,542 @@
             }
           ],
           "description": "searx/engines/ksiazak.py against a query that is not a company at all. 'inflacja' matches the Dino Polska note because inflation drives that thesis - the office's own subject matter, not a coincidence. Verified non-empty on the live instance 2026-10-11 (1 result, engine healthy), which is why it is here. The two sibling requests cover the other two shapes: a company name (noctiluca) and a body-only mention (orlen)."
+        }
+      ]
+    },
+    {
+      "name": "Fork engine: stooq (stooq.com)",
+      "description": "searx/engines/stooq.py, a fork-local engine over stooq.com/search/?type=nws: a PAP *news* index, not an instrument search. The page sits behind a SHA-256 proof-of-work gate plus a consent wall; the instance solves the PoW and caches the auth cookie, so a healthy run answers ten rows per page. A burst trips a CAPTCHA/429 suspension the instance reports per-engine, so these tests accept EITHER answered results OR an explicit suspension and fail only on malformed results, a hard error, or a silent empty 200.",
+      "item": [
+        {
+          "name": "STQ: PAP news cards or an explicit gate (kghm)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const rs = body.results || [];",
+                  "const unresp = body.unresponsive_engines || [];",
+                  "console.log(rs.length + ' result(s), unresponsive: ' + JSON.stringify(unresp));",
+                  "pm.test('No hard engine error', () => pm.expect(body.error, JSON.stringify(body.error)).to.be.undefined);",
+                  "pm.test('Answered with PAP news, or explicitly suspended', () => {",
+                  "  if (rs.length === 0) {",
+                  "    // The gate is the documented design: proof-of-work plus consent, a burst",
+                  "    // ends in a CAPTCHA/429 suspension the instance reports. A reported",
+                  "    // suspension is a valid outcome; a silent empty 200 is not.",
+                  "    pm.expect(unresp, 'silent empty 200: neither results nor a reason').to.have.length.above(0);",
+                  "    return;",
+                  "  }",
+                  "  const bad = rs.filter(r => !/^https:\\/\\/stooq\\.com\\/n\\/\\?f=\\d+(&|$)/.test(r.url || '')).map(r => (r||{}).url);",
+                  "  pm.expect(bad, 'not a stooq.com/n/?f= article URL: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
+                  "  pm.expect(rs, 'page 1 exceeds the site\\'s ten rows').to.have.lengthOf.at.most(10);",
+                  "  pm.expect(rs.filter(r => !r.title).length, 'untitled row(s)').to.equal(0);",
+                  "});",
+                  "pm.test('PAP dates arrive parsed (Polish month map works)', () => {",
+                  "  if (!rs.length) return;",
+                  "  pm.expect(rs.filter(r => r.publishedDate).length, 'no result carried a parsed date').to.be.at.least(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{searxngUrl}}/search?q=kghm&engines=stooq&format=json",
+              "host": [
+                "{{searxngUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "kghm"
+                },
+                {
+                  "key": "engines",
+                  "value": "stooq"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            },
+            "description": "Shape check: every result is a stooq.com/n/?f= PAP article with a title, a page of at most ten rows, and the Polish date line parsed into publishedDate. When the gate is shut the engine reports the suspension instead - that is a pass."
+          }
+        },
+        {
+          "name": "STQ: page 2 is a different page when the gate is open (kghm, pageno=2)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const rs2 = body.results || [];",
+                  "const unresp2 = body.unresponsive_engines || [];",
+                  "console.log(rs2.length + ' result(s) on page 2, first: ' + ((rs2[0]||{}).url));",
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Page 2 differs from page 1, when both answered', function (done) {",
+                  "  if (rs2.length === 0) { console.log('page 2 gated/suspended: ' + JSON.stringify(unresp2)); return done(); }",
+                  "  pm.sendRequest(",
+                  "    { url: pm.variables.replaceIn('{{searxngUrl}}/search?q=kghm&engines=stooq&page=1&format=json'),",
+                  "      method: 'GET' },",
+                  "    function (err, res) {",
+                  "      if (err) { return done(err); }",
+                  "      const b1 = res.json();",
+                  "      const first = (b1.results || []).map(r => r.url);",
+                  "      if (first.length === 0) { console.log('page 1 gated/suspended: ' + JSON.stringify(b1.unresponsive_engines || [])); return done(); }",
+                  "      const second = rs2.map(r => r.url);",
+                  "      const overlap = second.filter(u => first.includes(u));",
+                  "      console.log('overlap: ' + overlap.length + ' of ' + second.length);",
+                  "      pm.expect(overlap, 'page 2 repeats page 1').to.have.lengthOf(0);",
+                  "      const bad = rs2.filter(r => !/^https:\\/\\/stooq\\.com\\/n\\/\\?f=\\d+(&|$)/.test(r.url || '')).map(r => (r||{}).url);",
+                  "      pm.expect(bad, 'page 2 not article URLs: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
+                  "      done();",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{searxngUrl}}/search?q=kghm&engines=stooq&pageno=2&format=json",
+              "host": [
+                "{{searxngUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "kghm"
+                },
+                {
+                  "key": "engines",
+                  "value": "stooq"
+                },
+                {
+                  "key": "pageno",
+                  "value": "2"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            },
+            "description": "Paging: l is 1-based, page 2 must not repeat page 1. Skipped (with a logged reason) when either page is gated."
+          }
+        },
+        {
+          "name": "STQ: no-match query is empty or suspended, never an error (zzqxvqq)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const rs = body.results || [];",
+                  "const unresp = body.unresponsive_engines || [];",
+                  "console.log(rs.length + ' result(s), unresponsive: ' + JSON.stringify(unresp));",
+                  "pm.test('No hard engine error', () => pm.expect(body.error, JSON.stringify(body.error)).to.be.undefined);",
+                  "pm.test('No match is an empty list or a reported suspension, never an error', () => {",
+                  "  // stooq answers a non-matching query with a 200 carrying the site's own",
+                  "  // no-results state; the engine turns that into zero results. If the gate",
+                  "  // closes first, a reported suspension is equally valid.",
+                  "  if (rs.length === 0) return;",
+                  "  const bad = rs.filter(r => !/^https:\\/\\/stooq\\.com\\/n\\/\\?f=\\d+(&|$)/.test(r.url || '')).map(r => (r||{}).url);",
+                  "  pm.expect(bad, 'unexpected URL shape: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{searxngUrl}}/search?q=zzqxvqq&engines=stooq&format=json",
+              "host": [
+                "{{searxngUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "zzqxvqq"
+                },
+                {
+                  "key": "engines",
+                  "value": "stooq"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            },
+            "description": "The site's no-results state must surface as zero results, not as an engine error; a gate suspension reported instead is equally valid."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Fork engine: biznesradar (biznesradar.pl)",
+      "description": "searx/engines/biznesradar.py over /wiadomosci/<SLUG>: one company's aggregated press feed, server-rendered, no gate. The engine upper-cases the query (slugs are case-sensitive), so a lowercase ticker reaches the company page; results are EXTERNAL articles on their own domains, so the URL check is shape-only, not domain-pinned. A ticker like PKN 301s to the canonical slug; an unknown symbol is a 404 reported as zero results. Paging lives in the path (<SLUG>,<n>) - ?page= is silently ignored by the site. Measured 2026-11-15: 20 rows per page.",
+      "item": [
+        {
+          "name": "BR: lowercase ticker reaches the company page (kghm)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const rs = body.results || [];",
+                  "console.log(rs.length + ' result(s), unresponsive: ' + JSON.stringify(body.unresponsive_engines || []));",
+                  "pm.test('The engine answered', () => {",
+                  "  pm.expect(rs, 'empty result with no unresponsive_engines').to.have.length.above(0);",
+                  "});",
+                  "pm.test('Results are absolute external article URLs', () => {",
+                  "  const bad = rs.filter(r => !/^https?:\\/\\/[^\\/]+\\//.test(r.url || '')).map(r => (r||{}).url);",
+                  "  pm.expect(bad, 'not an absolute URL: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('Page 1 carries at most the feed\\'s 20 rows', () => pm.expect(rs).to.have.lengthOf.at.most(20));",
+                  "pm.test('No untitled row', () => pm.expect(rs.filter(r => !r.title).length, 'untitled row(s)').to.equal(0));",
+                  "pm.test('Feed dates arrive parsed (record-date footer)', () => {",
+                  "  pm.expect(rs.filter(r => r.publishedDate).length, 'no result carried a parsed date').to.be.at.least(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{searxngUrl}}/search?q=kghm&engines=biznesradar&format=json",
+              "host": [
+                "{{searxngUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "kghm"
+                },
+                {
+                  "key": "engines",
+                  "value": "biznesradar"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            },
+            "description": "Proves the upper-case path end to end: lowercase query, company feed answered, external article URLs, titles and record-date footers parsed."
+          }
+        },
+        {
+          "name": "BR: page 2 is a different page (kghm, pageno=2)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const rs2 = body.results || [];",
+                  "console.log(rs2.length + ' result(s) on page 2, first: ' + ((rs2[0]||{}).url));",
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Page 2 is full', () => pm.expect(rs2, 'page 2 empty').to.have.lengthOf(20));",
+                  "pm.test('Page 2 shares no result with page 1', function (done) {",
+                  "  pm.sendRequest(",
+                  "    { url: pm.variables.replaceIn('{{searxngUrl}}/search?q=kghm&engines=biznesradar&page=1&format=json'),",
+                  "      method: 'GET' },",
+                  "    function (err, res) {",
+                  "      if (err) { return done(err); }",
+                  "      const first = (res.json().results || []).map(r => r.url);",
+                  "      const second = rs2.map(r => r.url);",
+                  "      const overlap = second.filter(u => first.includes(u));",
+                  "      console.log('overlap: ' + overlap.length + ' of ' + second.length);",
+                  "      pm.expect(overlap, 'page 2 repeats page 1').to.have.lengthOf(0);",
+                  "      const bad = rs2.filter(r => !/^https?:\\/\\/[^\\/]+\\//.test(r.url || '')).map(r => (r||{}).url);",
+                  "      pm.expect(bad, 'page 2 bad URL shape: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
+                  "      done();",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{searxngUrl}}/search?q=kghm&engines=biznesradar&pageno=2&format=json",
+              "host": [
+                "{{searxngUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "kghm"
+                },
+                {
+                  "key": "engines",
+                  "value": "biznesradar"
+                },
+                {
+                  "key": "pageno",
+                  "value": "2"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            },
+            "description": "The real second page is /wiadomosci/KGHM,2 - what SearXNG hands the engine for pageno=2. ?page=2 would silently return page 1, which this catches via the overlap check."
+          }
+        },
+        {
+          "name": "BR: unknown symbol is zero results not failure (zzqxvqq)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const rs = body.results || [];",
+                  "console.log(rs.length + ' result(s), unresponsive: ' + JSON.stringify(body.unresponsive_engines || []));",
+                  "pm.test('No hard engine error', () => pm.expect(body.error, JSON.stringify(body.error)).to.be.undefined);",
+                  "pm.test('Zero matches, engine still healthy', () => {",
+                  "  pm.expect(rs, 'results for a nonexistent query').to.have.lengthOf(0);",
+                  "  pm.expect(body.unresponsive_engines || [], 'engine marked unresponsive: ' + JSON.stringify(body.unresponsive_engines)).to.have.lengthOf(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{searxngUrl}}/search?q=zzqxvqq&engines=biznesradar&format=json",
+              "host": [
+                "{{searxngUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "zzqxvqq"
+                },
+                {
+                  "key": "engines",
+                  "value": "biznesradar"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            },
+            "description": "The site answers a nonexistent symbol with 404; the engine must surface zero results with no unresponsive_engines and no error."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Fork engine: bankier (bankier.pl)",
+      "description": "searx/engines/bankier.py over /wyszukiwarka?qt=<terms>: full-text news search, server-rendered, no gate. The parameter is qt - a wrong one returns a zero-hit page for every query, which this folder's answer test catches. Hits are bankier.pl article pages with ISO entry-date timestamps; a no-match query is a 200 with \"Znaleziono: 0\". Paging is &page=2. Measured 2026-11-15: 10 rows per page.",
+      "item": [
+        {
+          "name": "BKR: full-text search answers with articles (kghm)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const rs = body.results || [];",
+                  "console.log(rs.length + ' result(s), unresponsive: ' + JSON.stringify(body.unresponsive_engines || []));",
+                  "pm.test('The engine answered', () => {",
+                  "  pm.expect(rs, 'empty result with no unresponsive_engines').to.have.length.above(0);",
+                  "});",
+                  "pm.test('Results are bankier.pl article URLs', () => {",
+                  "  const bad = rs.filter(r => !/^https:\\/\\/(www\\.)?bankier\\.pl\\/(wiadomosc|artykul)\\//.test(r.url || '')).map(r => (r||{}).url);",
+                  "  pm.expect(bad, 'not a bankier.pl article URL: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
+                  "});",
+                  "pm.test('Page 1 carries at most the site\\'s 10 rows', () => pm.expect(rs).to.have.lengthOf.at.most(10));",
+                  "pm.test('Entry dates arrive as ISO timestamps', () => {",
+                  "  pm.expect(rs.filter(r => r.publishedDate).length, 'no result carried a parsed date').to.be.at.least(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{searxngUrl}}/search?q=kghm&engines=bankier&format=json",
+              "host": [
+                "{{searxngUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "kghm"
+                },
+                {
+                  "key": "engines",
+                  "value": "bankier"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            },
+            "description": "qt= is honoured (not the decoy query/params): articles on bankier.pl with parsed ISO dates."
+          }
+        },
+        {
+          "name": "BKR: page 2 is a different page (kghm, pageno=2)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const rs2 = body.results || [];",
+                  "console.log(rs2.length + ' result(s) on page 2, first: ' + ((rs2[0]||{}).url));",
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Page 2 is full', () => pm.expect(rs2, 'page 2 empty').to.have.lengthOf(10));",
+                  "pm.test('Page 2 shares no result with page 1', function (done) {",
+                  "  pm.sendRequest(",
+                  "    { url: pm.variables.replaceIn('{{searxngUrl}}/search?q=kghm&engines=bankier&page=1&format=json'),",
+                  "      method: 'GET' },",
+                  "    function (err, res) {",
+                  "      if (err) { return done(err); }",
+                  "      const first = (res.json().results || []).map(r => r.url);",
+                  "      const second = rs2.map(r => r.url);",
+                  "      const overlap = second.filter(u => first.includes(u));",
+                  "      console.log('overlap: ' + overlap.length + ' of ' + second.length);",
+                  "      pm.expect(overlap, 'page 2 repeats page 1').to.have.lengthOf(0);",
+                  "      const bad = rs2.filter(r => !/^https:\\/\\/(www\\.)?bankier\\.pl\\/(wiadomosc|artykul)\\//.test(r.url || '')).map(r => (r||{}).url);",
+                  "      pm.expect(bad, 'page 2 bad URL shape: ' + JSON.stringify(bad.slice(0,3))).to.have.lengthOf(0);",
+                  "      done();",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{searxngUrl}}/search?q=kghm&engines=bankier&pageno=2&format=json",
+              "host": [
+                "{{searxngUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "kghm"
+                },
+                {
+                  "key": "engines",
+                  "value": "bankier"
+                },
+                {
+                  "key": "pageno",
+                  "value": "2"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            },
+            "description": "Paging via &page=2 from the site's own pagination links; page 2 must not repeat page 1."
+          }
+        },
+        {
+          "name": "BKR: no-match is the empty state, not an error (zzqxvqq)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const rs = body.results || [];",
+                  "console.log(rs.length + ' result(s), unresponsive: ' + JSON.stringify(body.unresponsive_engines || []));",
+                  "pm.test('No hard engine error', () => pm.expect(body.error, JSON.stringify(body.error)).to.be.undefined);",
+                  "pm.test('Zero matches, engine still healthy', () => {",
+                  "  pm.expect(rs, 'results for a nonexistent query').to.have.lengthOf(0);",
+                  "  pm.expect(body.unresponsive_engines || [], 'engine marked unresponsive: ' + JSON.stringify(body.unresponsive_engines)).to.have.lengthOf(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{searxngUrl}}/search?q=zzqxvqq&engines=bankier&format=json",
+              "host": [
+                "{{searxngUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "zzqxvqq"
+                },
+                {
+                  "key": "engines",
+                  "value": "bankier"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            },
+            "description": "The site's \"Znaleziono: 0\" page must surface as zero healthy results - the shape that a wrong search parameter also produces, which is why the answer test above matters."
+          }
         }
       ]
     }
