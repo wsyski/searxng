@@ -2,7 +2,8 @@
 """Biznesradar (biznesradar.pl) — Polish stock-data portal, per-company news
 
 The news page of one company is server-rendered and carries an aggregated
-press feed — external articles with title, teaser and source::
+press feed — articles with title, teaser and source, external ones linking to
+their own domain and the site's own linking to ``/a/<id>,<slug>``::
 
     https://www.biznesradar.pl/wiadomosci/<SLUG>          page 1
     https://www.biznesradar.pl/wiadomosci/<SLUG>,<n>      page n > 1
@@ -46,8 +47,9 @@ paging = True
 
 base_url = "https://www.biznesradar.pl"
 
-# One row: the header anchor is the external article (absolute URL, rel
-# nofollow), the teaser follows in record-body and the footer carries
+# One row: the header anchor is the article - external ones carry an absolute
+# href, the site's own a relative /a/<id>,<slug> - the teaser follows in
+# record-body and the footer carries
 # <span class="record-date">2026-11-05 17:56:13</span>.
 _ITEM_RE = re.compile(
     r'<div id="msg-\d+" class="record record-type-[A-Z]+">.*?'
@@ -82,6 +84,11 @@ def response(resp) -> EngineResults:
     seen = set()
     for match in _ITEM_RE.finditer(resp.text):
         url = match.group("url")
+        # Own articles carry site-relative hrefs (/a/<id>,<slug>); external
+        # ones are absolute. An unprefixed "/a/..." leaves the instance's URL
+        # parser with an empty authority and surfaces as "http:///a/...".
+        if url.startswith("/"):
+            url = base_url + url
         if url in seen:
             continue
         seen.add(url)
