@@ -161,7 +161,7 @@ bundled in its pinned image, not this working tree.
 
 ## Unit tests
 
-`bin/unit-tests.sh` runs the complete SearXNG unit suite through the managed
+`bin/tests.sh` runs the complete SearXNG unit suite through the managed
 toolchain (`./manage test.unit`, which invokes nose2 over `tests/unit`). It can
 be called from any directory. It does not run Kanban tests, a local model, or
 the slower Robot browser suite.
