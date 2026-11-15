@@ -3,7 +3,7 @@
 
 import pathlib
 import os
-import aiounittest
+import unittest
 
 os.environ.pop('SEARXNG_SETTINGS_PATH', None)
 os.environ['SEARXNG_DISABLE_ETC_SETTINGS'] = '1'
@@ -31,7 +31,7 @@ class SearxTestLayer:
         pass
 
 
-class SearxTestCase(aiounittest.AsyncTestCase):
+class SearxTestCase(unittest.IsolatedAsyncioTestCase):
     """Base test case for non-robot tests."""
 
     layer = SearxTestLayer
@@ -82,7 +82,7 @@ class SearxTestCase(aiounittest.AsyncTestCase):
 
         searx.search.initialize(
             check_network=True,
-            enable_metrics=searx.get_setting("general.enable_metrics"),  # type: ignore
+            enable_metrics=searx.get_setting("general.enable_metrics"),
         )
 
         # pylint: disable=attribute-defined-outside-init
