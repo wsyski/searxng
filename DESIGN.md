@@ -705,6 +705,9 @@ changes to the base file do not conflict.
 
   Check it before blaming a code change: `ls -l local/py3/bin/firefox`.
   `make test.robot` went from exit 1 to exit 0 with nothing else altered.
+  `gecko.driver()` (`manage`) now re-creates the symlink itself when
+  `local/firefox/firefox` exists, so a requirements-driven rebuild heals on the
+  next `test.robot`; the manual line stays as the fallback.
 - **`gecko.driver` checks the driver it installed, not the one on PATH.**
   `manage gecko.driver` unpacks a pinned geckodriver into `${PY_ENV_BIN}`, but
   the "already installed" test used to run bare `geckodriver -V` — which the snap

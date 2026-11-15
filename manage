@@ -176,6 +176,14 @@ webapp.run() {
 gecko.driver() {
     pyenv.install
 
+    # FORK: a venv rebuild (triggered by any requirements*.txt change) deletes
+    # ${PY_ENV_BIN}/firefox, the symlink to this host's real browser, and
+    # test.robot then dies on the snap shim. Re-point it when local/firefox is
+    # there; no-op on hosts without one. See DESIGN.md.
+    if [ ! -e "${PY_ENV_BIN}/firefox" ] && [ -x "${REPO_ROOT}/local/firefox/firefox" ]; then
+        ln -s "${REPO_ROOT}/local/firefox/firefox" "${PY_ENV_BIN}/firefox"
+    fi
+
     build_msg INSTALL "gecko.driver"
     # run installation in a subprocess and activate pyenv
     (
