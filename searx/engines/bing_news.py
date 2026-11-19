@@ -5,8 +5,18 @@
 
    Bing News is *different* in some ways!
 
+Fork-local change: Bing shows each item's age only as display text, in the
+market's language ("2 hours ago", "Vor 2 Tagen", "for 1 dag siden", "29.10.2026",
+"2026-10-23", "03/11/2026"), and upstream passes it on as ``metadata`` alone, so
+no Bing News row carried a ``publishedDate``. A client filtering news by date
+(the portfolio's DSA gateway and trading-agents web news) then dropped every
+undated row, which for Polish listings was nearly all of them (2026-11-19).
+:py:func:`published_date` reads that text; ``metadata`` is unchanged.
+
 """
 
+import re
+from datetime import datetime, timedelta
 from urllib.parse import urlencode
 
 from searx.enginelib.traits import EngineTraits
@@ -42,6 +52,79 @@ Bing does not have news range ``year`` / we use ``month`` instead."""
 
 base_url = "https://www.bing.com"
 """Bing (News) search URL"""
+
+# Unit words by prefix, in the languages Bing News answers in. Order matters:
+# "min" before the hour words, so "minuty"/"minuten" are minutes.
+_UNITS = (
+    ("minutes", ("min",)),
+    ("hours", ("hour", "stund", "std", "timm", "time", "heure", "godz", "hora", "ora", "ore", "uur")),
+    ("days", ("day", "tag", "dag", "dage", "jour", "dni", "dzie", "día", "dia", "giorn")),
+    ("weeks", ("week", "woch", "veck", "uke", "uge", "semaine", "tydz", "tygod", "semana", "settiman")),
+    ("months", ("month", "monat", "månad", "måned", "mois", "miesi", "mes", "maand")),
+)
+_ONE = {"a", "an", "one", "ein", "eine", "einem", "einer", "un", "une", "en", "ett", "et", "jeden", "uno", "una"}
+_YESTERDAY = ("yesterday", "gestern", "igår", "i går", "wczoraj", "hier", "ayer", "ieri", "gisteren")
+_TODAY = ("today", "heute", "idag", "i dag", "dzisiaj", "aujourd", "hoy", "oggi", "vandaag")
+_TOKENS = re.compile(r"\d+|[^\W\d_]+")
+_YMD = re.compile(r"\b(\d{4})-(\d{1,2})-(\d{1,2})\b")
+_DMY_DOT = re.compile(r"\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b")
+_SLASH = re.compile(r"\b(\d{1,2})/(\d{1,2})/(\d{4})\b")
+_EN_NAMED = ("%b %d, %Y", "%B %d, %Y", "%d %b %Y", "%d %B %Y")
+
+
+def _date(year, month, day):
+    try:
+        return datetime(int(year), int(month), int(day))
+    except ValueError:
+        return None
+
+
+def published_date(label, locale="", now=None):  # pylint: disable=too-many-return-statements,too-many-branches
+    """The item's date from Bing's age label, or None when the text is not one.
+
+    Slash dates are day first except in a US-English market, unless a part over 12
+    settles it."""
+    now = now or datetime.now()
+    text = (label or "").strip()
+    low = text.lower()
+    if not low:
+        return None
+    if any(w in low for w in _YESTERDAY):
+        return now - timedelta(days=1)
+    if any(w in low for w in _TODAY):
+        return now
+    m = _YMD.search(text)
+    if m:
+        return _date(*m.groups())
+    m = _DMY_DOT.search(text)
+    if m:
+        return _date(m.group(3), m.group(2), m.group(1))
+    m = _SLASH.search(text)
+    if m:
+        a, b, y = (int(g) for g in m.groups())
+        us = locale.lower() in ("en", "en-us")
+        if (us and a <= 12) or b > 12:
+            a, b = b, a
+        return _date(y, b, a)
+    for fmt in _EN_NAMED:
+        try:
+            return datetime.strptime(text, fmt)
+        except ValueError:
+            pass
+    tokens = _TOKENS.findall(low)
+    for count, word in zip(tokens, tokens[1:]):
+        if count.isdigit():
+            n = int(count)
+        elif count in _ONE:
+            n = 1
+        else:
+            continue
+        for unit, prefixes in _UNITS:
+            if word.startswith(prefixes):
+                if unit == "months":
+                    return now - timedelta(days=30 * n)
+                return now - timedelta(**{unit: n})
+    return None
 
 
 def request(query, params):
@@ -87,10 +170,16 @@ def response(resp):
         content = extract_text(eval_xpath(newsitem, './/div[@class="snippet"]'))
 
         metadata = []
+        published = None
         source = eval_xpath_getindex(newsitem, './/div[contains(@class, "source")]', 0, None)
         if source is not None:
+            age = eval_xpath_getindex(source, ".//span[@aria-label]/@aria-label", 0, None)
+            if age is not None:
+                published = published_date(
+                    extract_text(age), (getattr(resp, "search_params", None) or {}).get("searxng_locale", "")
+                )
             for item in (
-                eval_xpath_getindex(source, ".//span[@aria-label]/@aria-label", 0, None),
+                age,
                 # eval_xpath_getindex(source, './/a', 0, None),
                 # eval_xpath_getindex(source, './div/span', 3, None),
                 link.attrib.get("data-author"),
@@ -108,15 +197,16 @@ def response(resp):
             if not thumbnail.startswith("https://www.bing.com"):
                 thumbnail = "https://www.bing.com/" + thumbnail
 
-        results.append(
-            {
-                "url": url,
-                "title": title,
-                "content": content,
-                "thumbnail": thumbnail,
-                "metadata": metadata,
-            }
-        )
+        result = {
+            "url": url,
+            "title": title,
+            "content": content,
+            "thumbnail": thumbnail,
+            "metadata": metadata,
+        }
+        if published is not None:
+            result["publishedDate"] = published
+        results.append(result)
 
     return results
 

@@ -61,6 +61,10 @@ services:
       # mount the container keeps the pristine image copy and the patch is a
       # silent no-op: the repo would look patched while nothing changed.
       - ../searx/engines/github.py:/usr/local/searxng/searx/engines/github.py:ro
+      # Upstream engine, patched fork-side to set publishedDate from Bing's age
+      # label ("Vor 2 Tagen", "29.10.2026"); see its module docstring. Identical
+      # to the 2026.11.17-b99cf7496 image before the patch (checked 2026-11-19).
+      - ../searx/engines/bing_news.py:/usr/local/searxng/searx/engines/bing_news.py:ro
       # Core files, not engines. The JSON response gained two fields it could not
       # express before: `unknown_engines` (the `engines=` pins this instance does
       # not have - SearXNG drops them and runs the DEFAULT search, and until now

@@ -433,8 +433,10 @@ changes to the base file do not conflict.
   `aktienyheterna.py`, `placera.py` (fork-local; the last two in
   `finance`/`finance sweden`), `stooq.py`, `biznesradar.py`, `bankier.py`,
   `parkiet.py`, `gpw.py` and `rdf.py` (fork-local, enabled in
-  `finance`/`finance poland`; see `README.md`) and `github.py` (an upstream engine patched fork-side to read
-  the GitHub token from the environment); plus three core files for the JSON
+  `finance`/`finance poland`; see `README.md`), `github.py` (an upstream engine patched fork-side to read
+  the GitHub token from the environment) and `bing_news.py` (upstream, patched fork-side to
+  set `publishedDate` from Bing's localized age label, which upstream leaves in `metadata`
+  only: Polish rows were all undated and date-filtering clients dropped them, 2026-11-19); plus three core files for the JSON
   response fields — `searx/webadapter.py`, `searx/webutils.py` and
   `searx/search/models.py`.
 
